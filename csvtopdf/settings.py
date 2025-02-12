@@ -82,8 +82,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'shivrati_netram',          # Database name
-        'USER': 'root',            # MySQL username
-        'PASSWORD': '',  # MySQL password
+        'USER': 'shivrati_netram',            # MySQL username
+        'PASSWORD': 'junagadhpolice@123',  # MySQL password
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
