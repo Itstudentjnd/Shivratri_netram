@@ -1,0 +1,4 @@
+Django
+mysqlclient
+django-crispy-forms
+pillow

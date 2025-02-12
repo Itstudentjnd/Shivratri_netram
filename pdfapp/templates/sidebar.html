@@ -1,0 +1,22 @@
+{% load static %}
+<header class="fixed top-0 left-0 w-full bg-white/10 backdrop-blur-md shadow-lg p-4 text-white flex justify-between items-center">
+    
+    <!-- Logo & Title -->
+    <div class="flex items-center space-x-3">
+        <img src="{% get_media_prefix %}GUJARAT POLICE LOGO PNG.png" class="w-10 h-10" alt="Logo">
+        <h1 class="text-lg font-bold uppercase tracking-wide">Gujarat Police</h1>
+    </div>
+
+    <!-- Navigation Links -->
+    <nav class="hidden md:flex space-x-6">
+        
+        <a href="{% url 'admin_vehicle_passes' %}" class="text-white hover:text-yellow-400 transition duration-300">Issue Vehicle Pass</a>
+        {% comment %} <a href="{% url 'issue_press_pass' %}" class="text-white hover:text-yellow-400 transition duration-300">
+            Issue Press Pass
+        </a> {% endcomment %}
+        
+        <a href="{% url 'logout_view' %}" class="text-white hover:text-yellow-400 transition duration-300">Logout</a>
+    </nav>
+    
+
+</header>

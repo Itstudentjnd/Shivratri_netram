@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV અપલોડ | ગુજરાત પોલીસ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Glow Effect */
+        .glow-border {
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-900 to-blue-700 text-white min-h-screen flex flex-col">
+
+    <!-- ✅ Navbar Include -->
+    {% include 'navbar.html' %}
+
+    <div class="flex flex-col items-center justify-center flex-grow px-4">
+
+        <div class="text-center my-6">
+            <h1 class="text-4xl font-bold text-yellow-400">🚩 મહાશિવરાત્રી મેળો ૨૦૨૫ 🚩</h1>
+        </div>
+        
+
+        <!-- ✅ Buttons Section -->
+        <div class="flex space-x-4 mb-6">
+            <a href="{% url 'issue_vehicle_pass' %}" class="bg-yellow-500 hover:bg-yellow-600 text-black font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                🚗 વાહન પાસ મેળવવા માટે અહી click કરો. 
+            </a>
+            <a href="{% url 'check_status' %}" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                📋 વાહન પાસની સ્થિતિ ચકાસવા અહી click કરો. 
+            </a>
+            {% comment %} <a href="{% url 'press_pass_form' %}" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                📰 નવું પ્રેસ મિડિયા પાસ
+            </a> {% endcomment %}
+        </div>
+
+        <!-- ✅ Rules Section -->
+
+<div class="bg-blue-100 text-blue-900 p-3 rounded-lg mb-6 max-w-2xl w-full">
+    <p class="font-semibold text-lg">📌 વાહન પાસ માટેના નિયમો:</p>
+    <ul class="list-disc ml-5 text-sm">
+        <li>Aadhar Card ની બન્ને બાજુના <strong>Clear Photo</strong> અપલોડ કરવાના રહેશે. </li>
+        <li>RC Book નો <strong>Clear Photo</strong> અપલોડ કરવાના રહેશે.</li>
+        <li>Driving License નો <strong>Clear Photo</strong> અપલોડ કરવાના રહેશે.</li>
+    </ul>
+</div>
+
+
+
+    </div>
+
+</body>
+</html>

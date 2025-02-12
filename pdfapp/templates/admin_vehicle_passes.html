@@ -1,0 +1,132 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Pass Approval | Gujarat Police</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fullscreen Image Modal (Hidden by Default) */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-900 to-blue-700 text-white min-h-screen flex flex-col">
+
+    <!-- ✅ Navbar Include -->
+    {% include 'sidebar.html' %}
+
+    <div class="container mx-auto p-6 mt-20">
+        <h2 class="text-3xl font-bold text-center mb-6">🚔 Vehicle Pass Requests</h2>
+
+        <!-- ✅ Success Message -->
+        {% if messages %}
+            <div class="bg-green-600 text-white p-3 rounded-md mb-4">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <!-- ✅ Table Container (Scroll on Mobile) -->
+        <div class="overflow-x-auto bg-white shadow-lg rounded-lg">
+            <table class="w-full text-black">
+                <thead>
+                    <tr class="bg-blue-900 text-white text-left">
+                        <th class="p-3">#</th>
+                        <th class="p-3">Applicant</th>
+                        <th class="p-3">Mobile No</th>
+                        <th class="p-3">Vehicle No</th>
+                        <th class="p-3">Type</th>
+                        <th class="p-3">Dates</th>
+                        <th class="p-3">Reason</th>
+                        <th class="p-3">Documents</th>
+                        <th class="p-3">Status</th>
+                        <th class="p-3 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pass in passes %}
+                        <tr class="border-b hover:bg-gray-100 transition">
+                            <td class="p-3">{{ forloop.counter }}</td>
+                            <td class="p-3">{{ pass.name }}</td>
+                            <td class="p-3">{{ pass.mobile_no }}</td>
+                            <td class="p-3 font-semibold">{{ pass.vehicle_number }}</td>
+                            <td class="p-3">{{ pass.vehicle_type }}</td>
+                            <td class="p-3">{{ pass.start_date }} → {{ pass.end_date }}</td>
+                            <td class="p-3">{{ pass.travel_reason }}</td>
+                            
+                            <!-- ✅ Show Aadhaar & License Files -->
+                            <td class="p-3 text-center">
+                                <div class="flex justify-center gap-2">
+                                    {% if pass.aadhaar_front %}
+                                        <a href="{{ pass.aadhaar_front.url }}" target="_blank" class="text-blue-600">Aadhaar Front</a>
+                                    {% endif %}
+                                    {% if pass.aadhaar_back %}
+                                        <a href="{{ pass.aadhaar_back.url }}" target="_blank" class="text-blue-600">Aadhaar Back</a>
+                                    {% endif %}
+                                    {% if pass.rc_book %}
+                                        <a href="{{ pass.rc_book.url }}" target="_blank" class="text-blue-600">RC Book</a>
+                                    {% endif %}
+                                    {% if pass.license_photo %}
+                                        <a href="{{ pass.license_photo.url }}" target="_blank" class="text-blue-600">License</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <!-- ✅ Show Status -->
+                            <td class="p-3">
+                                {% if pass.status == "approved" %}
+                                    <span class="text-green-600 font-bold">✔ Approved</span>
+                                {% elif pass.status == "rejected" %}
+                                    <span class="text-red-600 font-bold">✖ Rejected</span>
+                                {% else %}
+                                    <span class="text-yellow-600 font-bold">⏳ Pending</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- ✅ Approve/Reject Actions -->
+                            <td class="p-3 text-center">
+                                {% if pass.status == "pending" %}
+                                    <div class="flex justify-center gap-3">
+                                        <a href="{% url 'update_pass_status' pass.id 'approved' %}" 
+                                        class="inline-flex bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition">
+                                            ✔ Approve
+                                        </a>
+
+                                        <a href="{% url 'update_pass_status' pass.id 'rejected' %}" 
+                                           class="inline-flex bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition">
+                                            ✖ Reject
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="10" class="text-center p-4 text-gray-600">🚫 **કોઈ પાસ રિકવેસ્ટ નથી**</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</body>
+</html>
