@@ -32,6 +32,8 @@
     <!-- ✅ Navbar Include -->
     {% include 'sidebar.html' %}
 
+    
+    
     <div class="container mx-auto p-6 mt-20">
         <h2 class="text-3xl font-bold text-center mb-6">🚔 Vehicle Pass Requests</h2>
 
@@ -43,6 +45,12 @@
                 {% endfor %}
             </div>
         {% endif %}
+
+        <div class="flex justify-end mb-4">
+            <a href="{% url 'export_vehicle_passes' %}" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500 transition">
+                📥 Excel Download
+            </a>
+        </div>
 
         <!-- ✅ Table Container (Scroll on Mobile) -->
         <div class="overflow-x-auto bg-white shadow-lg rounded-lg">
@@ -110,10 +118,10 @@
                                             ✔ Approve
                                         </a>
 
-                                        <a href="{% url 'update_pass_status' pass.id 'rejected' %}" 
-                                           class="inline-flex bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition">
+                                        <button onclick="openRejectModal('{{ pass.id }}')" 
+                                                class="inline-flex bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition">
                                             ✖ Reject
-                                        </a>
+                                        </button>
                                     </div>
                                 {% endif %}
                             </td>
@@ -127,6 +135,33 @@
             </table>
         </div>
     </div>
+    <!-- Reject Modal -->
+<div id="rejectModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
+        <h2 class="text-xl font-bold text-red-600">Reject Pass</h2>
+        <p class="text-black-600 mb-3">Enter reason for rejection:</p>
+        <form id="rejectForm" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="pass_id" id="pass_id">
+            <textarea name="reject_reason" id="reject_reason" required class="w-full p-2 border rounded-md text-black" placeholder="Enter rejection reason..."></textarea>
+            <div class="mt-4">
+                <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md">Submit</button>
+                <button type="button" onclick="closeRejectModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    function openRejectModal(passId) {
+        document.getElementById("rejectModal").style.display = "flex";
+        document.getElementById("pass_id").value = passId;
+        document.getElementById("rejectForm").action = `/update-pass-status/${passId}/rejected/`;
+    }
+    
+    function closeRejectModal() {
+        document.getElementById("rejectModal").style.display = "none";
+    }
+    </script>
 
 </body>
 </html>
