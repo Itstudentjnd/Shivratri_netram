@@ -56,6 +56,11 @@ class VehiclePass(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
     applied_at = models.DateTimeField(auto_now_add=True)
 
+    travel_reason = models.CharField(max_length=255)
+    extra_name = models.CharField(max_length=255, blank=True, null=True)
+    extra_place = models.CharField(max_length=255, blank=True, null=True)
+
+
     def __str__(self):
         return f"{self.name} - {self.vehicle_number} ({self.status})"
 

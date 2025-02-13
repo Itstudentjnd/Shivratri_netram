@@ -61,7 +61,15 @@ def check_pass_status(request):
     reject_reason = None  # Default None
 
     if request.method == "POST":
-        vehicle_number = request.POST.get("vehicle_number", "").strip()
+        # ✅ Extract input fields from the form
+        state_code = request.POST.get("state_code", "").strip().upper()
+        city_code = request.POST.get("city_code", "").strip().upper()
+        series = request.POST.get("series", "").strip().upper()
+        digits = request.POST.get("digits", "").strip()
+
+        # ✅ Construct full vehicle number in proper format
+        vehicle_number = f"{state_code}{city_code}{series}{digits}"
+
         try:
             vehicle_pass = VehiclePass.objects.get(vehicle_number=vehicle_number)
             pass_status = vehicle_pass.status
@@ -74,9 +82,9 @@ def check_pass_status(request):
         "reject_reason": reject_reason,  # ✅ Pass reject reason to template
     })
 
-
 def issue_vehicle_pass(request):
     if request.method == "POST":
+        # Vehicle Number Construction
         vehicle_number = (
             request.POST.get("state_code", "").upper()
             + request.POST.get("city_code", "")
@@ -84,8 +92,9 @@ def issue_vehicle_pass(request):
             + request.POST.get("digits", "")
         )
 
+        # Check for duplicate vehicle number
         if VehiclePass.objects.filter(vehicle_number=vehicle_number).exists():
-            messages.error(request, f"🚨 આ વાહન નંબર ({vehicle_number}) પહેલેથી રજીસ્ટર થયેલ છે!")
+            messages.error(request, f"🚨 આ વાહન નંબર ({vehicle_number}) માટે પહેલેથી જ અરજી થઈ ચૂકી છે!")
             return redirect("issue_vehicle_pass")
 
         form = VehiclePassForm(request.POST, request.FILES)
@@ -95,18 +104,33 @@ def issue_vehicle_pass(request):
             vehicle_pass.vehicle_number = vehicle_number
             vehicle_pass.mobile_no = request.POST.get("mobile_no", "")
 
+            # File Uploads
             vehicle_pass.aadhaar_front = request.FILES.get("aadhaar_front", None)
             vehicle_pass.aadhaar_back = request.FILES.get("aadhaar_back", None)
             vehicle_pass.rc_book = request.FILES.get("rc_book", None)
             vehicle_pass.license_photo = request.FILES.get("license_photo", None)
 
+            # Travel Reason & Extra Fields
+            travel_reason = request.POST.get("travel_reason")
+            extra_name = request.POST.get("extra_name", "")
+            extra_place = request.POST.get("extra_place", "")
+            other_reason = request.POST.get("other_reason", "")
+
+            # If 'Other' is selected, use other_reason, else use selected reason
+            final_reason = other_reason if travel_reason == "other" else travel_reason
+            vehicle_pass.travel_reason = final_reason
+            vehicle_pass.extra_name = extra_name if travel_reason != "other" else ""
+            vehicle_pass.extra_place = extra_place if travel_reason != "other" else ""
+
+            # Set status to 'Pending'
             vehicle_pass.status = "pending"
             vehicle_pass.save()
 
-            messages.success(request, "✅ધન્યવાદ તમારા વાહન માટેની અરજી સફળતા પૂર્વક થઈ ગઈ છે. પાસ ઇસ્યુ થયો છે કે નહીં એ જાણ આજ website પર કરવામાં આવસે.  !")
+            messages.success(request, "✅ તમારા વાહન પાસ માટેની અરજી સફળતાપૂર્વક સબમિટ થઈ ગયેલ છે! જાણકારી માટે સાઇટ ચકાસતા રહો.")
             return redirect("index")
+
         else:
-            print(form.errors)  # 🔍 Debugging step: Print form errors in console
+            print(form.errors)  # Debugging step: Print form errors in console
             messages.error(request, "❌ કૃપા કરીને બધી વિગતો સાચી રીતે ભરો.")
 
     else:
