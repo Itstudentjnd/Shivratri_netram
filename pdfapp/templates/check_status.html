@@ -19,52 +19,56 @@
     <!-- ✅ Navbar Include -->
     {% include 'navbar.html' %}
 
-    <div class="flex flex-col items-center justify-center flex-grow px-4">
-        
+    <div class="flex flex-col items-center justify-center flex-grow px-4 py-10">
+
         <!-- ✅ Pass Status Form -->
-        <div class="bg-white text-black rounded-lg shadow-lg p-8 max-w-2xl w-full glow-border text-center">
-            <h2 class="text-3xl font-bold text-blue-900 mb-4">📜 તમારા વાહન પાસની સ્થિતિ ચકાસો</h2>
-            
+        <div class="bg-white text-black rounded-lg shadow-lg p-6 sm:p-8 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-2xl w-full glow-border text-center">
+            <h2 class="text-2xl sm:text-3xl font-bold text-blue-900 mb-4">📜 તમારા વાહન પાસની સ્થિતિ ચકાસો</h2>
+
             <form method="POST" class="space-y-4">
                 {% csrf_token %}
                 
-                <label class="block font-semibold text-blue-900 text-xl">🚗 તમારા વાહન નંબર દાખલ કરો:</label>
+                <label class="block font-semibold text-blue-900 text-lg sm:text-xl">🚗 તમારા વાહન નંબર દાખલ કરો:</label>
                 
-                <!-- ✅ Vehicle Number Input (Proper Formatting) -->
-                <div class="flex justify-center gap-2">
-                    <input type="text" name="state_code" maxlength="2" placeholder="GJ" class="w-12 p-2 border rounded-md text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                    <input type="text" name="city_code" maxlength="2" placeholder="01" class="w-12 p-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                    <input type="text" name="series" maxlength="2" placeholder="AA" class="w-12 p-2 border rounded-md text-center uppercase focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                    <input type="text" name="digits" maxlength="4" placeholder="1234" class="w-16 p-2 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                <!-- ✅ Vehicle Number Input (Structured Layout) -->
+                <div class="grid grid-cols-4 gap-2">
+                    <input type="text" name="state_code" maxlength="2" placeholder="GJ" 
+                        class="w-full p-2 border rounded-md text-center uppercase text-lg sm:text-xl focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="text" name="city_code" maxlength="2" placeholder="01" 
+                        class="w-full p-2 border rounded-md text-center text-lg sm:text-xl focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="text" name="series" maxlength="2" placeholder="AA" 
+                        class="w-full p-2 border rounded-md text-center uppercase text-lg sm:text-xl focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <input type="text" name="digits" maxlength="4" placeholder="1234" 
+                        class="w-full p-2 border rounded-md text-center text-lg sm:text-xl focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 </div>
 
-                <button type="submit" class="w-full bg-blue-900 text-white text-xl font-semibold py-3 rounded-md hover:bg-blue-700 transition-all duration-300">
+                <button type="submit" class="w-full bg-blue-900 text-white text-lg sm:text-xl font-semibold py-3 rounded-md hover:bg-blue-700 transition-all duration-300">
                     🔍 સ્થિતિ ચકાસો
                 </button>
             </form>
 
             <!-- ✅ Pass Status Result -->
             {% if pass_status %}
-                <div class="mt-6 p-4 rounded-lg text-lg font-semibold text-center 
+                <div class="mt-6 p-4 rounded-lg text-center text-lg sm:text-xl font-semibold
                     {% if pass_status == 'approved' %} bg-green-100 text-green-800 
                     {% elif pass_status == 'rejected' %} bg-red-100 text-red-800 
                     {% elif pass_status == 'pending' %} bg-yellow-100 text-yellow-800 
                     {% else %} bg-gray-100 text-gray-800 {% endif %}">
-                    
+
                     {% if pass_status == "approved" %}
                         <p>✅ **તમારો પાસ મંજૂર કરવામાં આવેલ છે!**</p>
-                        <p class="text-sm font-normal">કૃપા કરીને **ભવનાથ પોલીસ સ્ટેશન** માંથી મેળવી લેશો.</p>
-                    
+                        <p class="text-sm sm:text-base font-normal">કૃપા કરીને **ભવનાથ પોલીસ સ્ટેશન** માંથી મેળવી લેશો.</p>
+
                     {% elif pass_status == "rejected" %}
                         <p>❌ **તમારો પાસ નામંજૂર કરવામાં આવયો છે.**</p>
                         {% if reject_reason %}
-                            <p class="text-xl  font-normal">📌 **કારણ:** {{ reject_reason }}</p>
+                            <p class="text-base sm:text-lg font-normal">📌 **કારણ:** {{ reject_reason }}</p>
                         {% endif %}
-                    
+
                     {% elif pass_status == "pending" %}
                         <p>⚠️ **તમારો પાસ ચકાસણી હેઠળ છે.**</p>
-                        <p class="text-sm font-normal">કૃપા કરીને **થોડો સમય રાહ જુઓ.**</p>
-                    
+                        <p class="text-sm sm:text-base font-normal">કૃપા કરીને **થોડો સમય રાહ જુઓ.**</p>
+
                     {% elif pass_status == "not_found" %}
                         <p>🚫 **આ નંબર માટે કોઈ અરજી કરવામાં આવેલ નથી!**</p>
                     {% endif %}
