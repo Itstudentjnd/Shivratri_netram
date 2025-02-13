@@ -18,7 +18,8 @@ urlpatterns = [
     # path('update-status/<int:record_id>/<str:action>/', views.update_status, name='update_status'),
     # path("download/press-pass/<int:record_id>/", views.generate_press_pass, name="download_press_pass"),
     # path("download/vehicle-pass/<int:pass_id>/", views.generate_pass_image, name="download_vehicle_pass"),
-    path('check_status/', views.check_status, name='check_status')
+    path('check_status/', views.check_pass_status, name='check_status'),
+    path('export_vehicle_passes/', views.export_vehicle_passes, name='export_vehicle_passes'),  # ✅ New export URL
     
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

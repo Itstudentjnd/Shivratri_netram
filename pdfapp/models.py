@@ -50,6 +50,8 @@ class VehiclePass(models.Model):
     aadhaar_back = models.ImageField(upload_to="vehicle_photos/aadhaar_back/", null=True, blank=True)
     rc_book = models.ImageField(upload_to="vehicle_photos/rc_book/", null=True, blank=True)
     license_photo = models.ImageField(upload_to="vehicle_photos/license/", null=True, blank=True)
+    reject_reason = models.TextField(blank=True, null=True)
+
 
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="pending")
     applied_at = models.DateTimeField(auto_now_add=True)

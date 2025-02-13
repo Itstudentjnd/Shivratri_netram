@@ -1,3 +1,4 @@
+import csv
 import pandas as pd
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
@@ -12,6 +13,7 @@ from django.contrib import messages
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth import logout
 from PIL import Image, ImageDraw, ImageFont
+from django.utils.timezone import now
 
 # ✅ Login View
 def login_view(request):
@@ -53,26 +55,23 @@ def logout_view(request):
 def index(request):
     return render(request, "index.html")
 
-def check_status(request):
+def check_pass_status(request):
     pass_status = None
+    reject_reason = None  # Default None
 
     if request.method == "POST":
-        vehicle_number = request.POST.get("vehicle_number")
-
-        # Check in VehiclePass model
-        vehicle_pass = VehiclePass.objects.filter(vehicle_number=vehicle_number).first()
-
-        # Check in PressPass model if not found in VehiclePass
-        press_pass = PressPass.objects.filter(vehicle_number=vehicle_number).first() if not vehicle_pass else None
-
-        if vehicle_pass:
-            pass_status = vehicle_pass.status  # Assuming status field: 'approved', 'rejected', 'pending'
-        elif press_pass:
-            pass_status = press_pass.status  # Same status field in PressPass
-        else:
+        vehicle_number = request.POST.get("vehicle_number", "").strip()
+        try:
+            vehicle_pass = VehiclePass.objects.get(vehicle_number=vehicle_number)
+            pass_status = vehicle_pass.status
+            reject_reason = vehicle_pass.reject_reason if pass_status == "rejected" else None  # Fetch reason only if rejected
+        except VehiclePass.DoesNotExist:
             pass_status = "not_found"
 
-    return render(request, "check_status.html", {"pass_status": pass_status})
+    return render(request, "check_status.html", {
+        "pass_status": pass_status,
+        "reject_reason": reject_reason,  # ✅ Pass reject reason to template
+    })
 
 
 def issue_vehicle_pass(request):
@@ -118,25 +117,81 @@ def admin_vehicle_passes(request):
         return render(request, 'admin_vehicle_passes.html', {'passes': passes})
     return HttpResponse("❌ Access Denied! Admins only.", status=403)
 
+def export_vehicle_passes(request):
+    if request.session.get("role") != "admin":
+        return HttpResponse("❌ Access Denied! Admins only.", status=403)
+
+    # ✅ Create response with CSV MIME type
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="vehicle_passes_{now().strftime("%Y-%m-%d")}.csv"'
+
+    # ✅ Write CSV header
+    writer = csv.writer(response)
+    writer.writerow([
+        "ID", "Name", "Vehicle Number", "Vehicle Type",
+        "Status", "Reject Reason", "Request Date", "Approved/Rejected Time",
+        "Downloaded By", "Approved/Rejected By", "Aadhar Front", "Aadhar Back",
+        "RC Book", "Driving License"
+    ])
+
+    # ✅ Fetch all passes and write data
+    passes = VehiclePass.objects.all().order_by('-id')
+    for p in passes:
+        # Check if your model has date fields
+
+        aadhaar_front = request.build_absolute_uri(p.aadhaar_front.url) if hasattr(p, "aadhaar_front") and p.aadhaar_front else "N/A"
+        aadhaar_back = request.build_absolute_uri(p.aadhaar_back.url) if hasattr(p, "aadhaar_back") and p.aadhaar_back else "N/A"
+        rc_book = request.build_absolute_uri(p.rc_book.url) if hasattr(p, "rc_book") and p.rc_book else "N/A"
+        license_photo = request.build_absolute_uri(p.license_photo.url) if hasattr(p, "license_photo") and p.license_photo else "N/A"
+
+        writer.writerow([
+            p.id,
+            p.name,
+            p.vehicle_number,
+            p.vehicle_type,
+            p.status,
+            p.reject_reason if hasattr(p, "reject_reason") and p.reject_reason else "N/A",
+            aadhaar_front,  # Aadhar Front Image URL
+            aadhaar_back,  # Aadhar Back Image URL
+            rc_book,  # RC Book Image URL
+            license_photo  # Driving License Image URL
+        ])
+
+    return response
+
 def update_pass_status(request, pass_id, status):
-        
+    vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
 
-        vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
+    if status not in ["approved", "rejected"]:
+        return HttpResponse("❌ Invalid Status!", status=400)
 
-        if status not in ["approved", "rejected"]:
-            return HttpResponse("❌ Invalid Status!", status=400)
+    # ✅ Handle Rejection with Reason
+    if status == "rejected":
+        if request.method == "POST":
+            reject_reason = request.POST.get("reject_reason", "").strip()
+            if not reject_reason:
+                messages.error(request, "❌ Please provide a reason for rejection!")
+                return redirect("admin_vehicle_passes")  # Redirect back to admin panel
 
-        # ✅ Update Status
-        vehicle_pass.status = status
+            vehicle_pass.status = "rejected"
+            vehicle_pass.reject_reason = reject_reason  # Save rejection reason
+            vehicle_pass.save()
+
+            messages.success(request, "❌ Vehicle Pass Rejected Successfully!")
+            return redirect("admin_vehicle_passes")  # Redirect after rejection
+
+        # If GET request for rejection, show error
+        messages.error(request, "❌ Invalid request method for rejection!")
+        return redirect("admin_vehicle_passes")
+
+    # ✅ If approved, update status
+    if status == "approved":
+        vehicle_pass.status = "approved"
+        vehicle_pass.reject_reason = ""  # Clear rejection reason
         vehicle_pass.save()
-        
-        messages.success(request, f"✅ Vehicle Pass **{status.capitalize()}** Successfully!")
+        return generate_pass_image(vehicle_pass)  # Generates the pass and returns response
 
-        # ✅ If approved, generate the pass image
-        if status == "approved":
-            return generate_pass_image(vehicle_pass)
-
-        return redirect("admin_vehicle_passes")  # Redirect if not generating image
+    return redirect("admin_vehicle_passes")
 
 
 def generate_pass_image(vehicle_pass):
@@ -165,16 +220,25 @@ def generate_pass_image(vehicle_pass):
     font_rules = load_font("NotoSansGujarati-Regular.ttf", 38)  # Rules Section
 
     # ✅ Blue Header for Official Look
-    draw.rectangle([(0, 0), (2480, 220)], fill="#003366")  # Blue Top Header
-    draw.text((850, 60), "જૂનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="white", font=font_title)
+    draw.rectangle([(0, 0), (2480, 220)], fill="#ffffff")  # Blue Top Header
+    draw.text((850, 60), "જૂનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_title)
 
     # ✅ Load & Position Police Logo
     logo_path = os.path.join("media", "GUJARAT POLICE LOGO PNG.png")
     if os.path.exists(logo_path):
-        police_logo = Image.open(logo_path).resize((180, 180))
-        img.paste(police_logo, (100, 20))  # Inside Blue Header (Left)
+        police_logo = Image.open(logo_path).convert("RGBA")  # Convert to RGBA (Handles Transparency)
+        
+        # Create a white background image with same size as the logo
+        background = Image.new("RGBA", police_logo.size, (255, 255, 255, 255))  
+        
+        # Paste the logo onto the white background
+        police_logo = Image.alpha_composite(background, police_logo).convert("RGB")  
+        
+        police_logo = police_logo.resize((180, 180))
+        img.paste(police_logo, (100, 20))
 
-    # ✅ QR Code Generation (Centered)
+
+    # ✅ QR Code Generation with Embedded Gujarat Police Logo
     qr_data = f"""
     વાહન પરવાનગી ID: {vehicle_pass.id}
     નામ: {vehicle_pass.name}
@@ -184,8 +248,33 @@ def generate_pass_image(vehicle_pass):
     શરુઆત: {vehicle_pass.start_date}
     અંતિમ: {vehicle_pass.end_date}
     """
-    qr = qrcode.make(qr_data).resize((500, 500))
-    img.paste(qr, (1850, 700))  # Bottom Right Side
+
+    qr = qrcode.QRCode(
+        version=5,
+        error_correction=qrcode.constants.ERROR_CORRECT_H,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
+
+    # ✅ Embed Gujarat Police Logo in QR Code
+    if os.path.exists(logo_path):
+        logo = Image.open(logo_path)
+        logo_size = (320, 320)  # Resize logo to fit inside QR
+        logo = logo.resize(logo_size)
+
+        # Get QR size and calculate logo position
+        qr_width, qr_height = qr_img.size
+        logo_position = ((qr_width - logo_size[0]) // 2, (qr_height - logo_size[1]) // 2)
+
+        # Paste the logo at the center of QR Code
+        qr_img.paste(logo, logo_position, mask=logo)
+
+    # ✅ Paste QR Code on Vehicle Pass (No Blue Strip Above)
+    img.paste(qr_img.resize((500, 500)), (1850, 700))  # Bottom Right Side
 
     # ✅ Draw a Line Below Header for Separation
     draw.line([(50, 230), (2430, 230)], fill="black", width=5)
@@ -220,10 +309,14 @@ def generate_pass_image(vehicle_pass):
     image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.vehicle_number}.png')
 
     img.save(image_path)
+
     # ✅ Save Image to Response
     response = HttpResponse(content_type="image/png")
     img.save(response, "PNG")
+    response['Content-Disposition'] = f'attachment; filename="{vehicle_pass.vehicle_number}.png"'
     return response
+
+
 
 # def press_pass_form(request):
 #     if request.method == "POST":
