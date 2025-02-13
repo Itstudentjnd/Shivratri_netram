@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime
 import pandas as pd
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
@@ -76,39 +77,44 @@ def check_pass_status(request):
 
 def issue_vehicle_pass(request):
     if request.method == "POST":
-        form = VehiclePassForm(request.POST, request.FILES)
-        
-        if form.is_valid():
-            # ✅ Concatenate vehicle number parts before saving
-            vehicle_number = (
-                request.POST.get("state_code", "").upper()
-                + request.POST.get("city_code", "")
-                + request.POST.get("series", "").upper()
-                + request.POST.get("digits", "")
-            )
+        vehicle_number = (
+            request.POST.get("state_code", "").upper()
+            + request.POST.get("city_code", "")
+            + request.POST.get("series", "").upper()
+            + request.POST.get("digits", "")
+        )
 
-            # ✅ Create the object but do NOT save it yet
+        if VehiclePass.objects.filter(vehicle_number=vehicle_number).exists():
+            messages.error(request, f"🚨 આ વાહન નંબર ({vehicle_number}) પહેલેથી રજીસ્ટર થયેલ છે!")
+            return redirect("issue_vehicle_pass")
+
+        form = VehiclePassForm(request.POST, request.FILES)
+
+        if form.is_valid():
             vehicle_pass = form.save(commit=False)
-            vehicle_pass.vehicle_number = vehicle_number  # Assign vehicle number
-            
-            # ✅ Assign uploaded files
+            vehicle_pass.vehicle_number = vehicle_number
+            vehicle_pass.mobile_no = request.POST.get("mobile_no", "")
+
             vehicle_pass.aadhaar_front = request.FILES.get("aadhaar_front", None)
             vehicle_pass.aadhaar_back = request.FILES.get("aadhaar_back", None)
             vehicle_pass.rc_book = request.FILES.get("rc_book", None)
             vehicle_pass.license_photo = request.FILES.get("license_photo", None)
-            
-            vehicle_pass.status = "pending"  # Default status
-            vehicle_pass.save()  # ✅ Save the record in MySQL
 
-            # messages.success(request, "✅ તમારું પાસ ઈશ્યુ થઈ ગયું છે!")
+            vehicle_pass.status = "pending"
+            vehicle_pass.save()
+
+            messages.success(request, "✅ધન્યવાદ તમારા વાહન માટેની અરજી સફળતા પૂર્વક થઈ ગઈ છે. પાસ ઇસ્યુ થયો છે કે નહીં એ જાણ આજ website પર કરવામાં આવસે.  !")
             return redirect("index")
         else:
+            print(form.errors)  # 🔍 Debugging step: Print form errors in console
             messages.error(request, "❌ કૃપા કરીને બધી વિગતો સાચી રીતે ભરો.")
-    
+
     else:
         form = VehiclePassForm()
 
     return render(request, "issue_vehicle_pass.html", {"form": form})
+
+
 
 # ✅ Admin Panel to View Requests
 def admin_vehicle_passes(request):
@@ -197,6 +203,12 @@ def update_pass_status(request, pass_id, status):
 def generate_pass_image(vehicle_pass):
     """Generate a professional Gujarat Police vehicle pass (A5 Landscape)."""
 
+    last_id = vehicle_pass.id  # Last ID of the pass
+    serial_number = f"{last_id:03d}"  # Convert to 3-digit format (e.g., 001, 002, 003)
+    issue_date = datetime.today().strftime("%d-%m-%Y")  # e.g., 15-02-2025
+
+    
+
     # ✅ Set Image Size (A5 Landscape: 2480x1748 pixels)
     image_size = (2480, 1748)
     img = Image.new("RGB", image_size, "white")  # White background
@@ -221,7 +233,11 @@ def generate_pass_image(vehicle_pass):
 
     # ✅ Blue Header for Official Look
     draw.rectangle([(0, 0), (2480, 220)], fill="#ffffff")  # Blue Top Header
-    draw.text((850, 60), "જૂનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_title)
+    draw.text((350, 60), "જૂનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_title)
+
+    draw.text((1900, 50), f"પાસ નં.: {serial_number}", fill="black", font=font_details)
+    draw.text((1900, 130), f"ઈશ્યુ તારીખ: {issue_date}", fill="black", font=font_details)
+
 
     # ✅ Load & Position Police Logo
     logo_path = os.path.join("media", "GUJARAT POLICE LOGO PNG.png")
@@ -236,6 +252,8 @@ def generate_pass_image(vehicle_pass):
         
         police_logo = police_logo.resize((180, 180))
         img.paste(police_logo, (100, 20))
+    
+    
 
 
     # ✅ QR Code Generation with Embedded Gujarat Police Logo
@@ -283,9 +301,10 @@ def generate_pass_image(vehicle_pass):
     draw.text((870, 300), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
 
     # ✅ Date Section - Proper Alignment
-    draw.text((200, 480), f"શરુઆત: {vehicle_pass.start_date}", fill="black", font=font_details)
-    draw.text((1400, 480), f"અંતિમ: {vehicle_pass.end_date}", fill="black", font=font_details)
-
+    draw.text((200, 480), f"તારીખ: {vehicle_pass.start_date}", fill="black", font=font_details)
+    draw.text((700, 480), f"થી", fill="black", font=font_details)
+    draw.text((850, 480), f"તારીખ : {vehicle_pass.end_date}", fill="black", font=font_details)
+    draw.text((1350, 480), f"સુધી ", fill="black", font=font_details)
     # ✅ Vehicle Details - Structured Alignment
     draw.text((200, 600), f"વાહન નંબર: {vehicle_pass.vehicle_number}", fill="black", font=font_subtitle)
     draw.text((200, 720), f"વાહન પ્રકાર: {vehicle_pass.vehicle_type}", fill="black", font=font_subtitle)
@@ -296,8 +315,8 @@ def generate_pass_image(vehicle_pass):
     draw.text((200, 1100), f"પ્રવાસનું કારણ: {vehicle_pass.travel_reason}", fill="black", font=font_details)
 
     # ✅ Police Officer Signature Section
-    draw.text((1900, 1400), "પોલીસ અધિકારી", fill="black", font=font_subtitle)
-    draw.text((1900, 1470), "જુનાગઢ પોલીસ", fill="black", font=font_subtitle)
+    draw.text((1900, 1400), "પોલીસ અધીક્ષક", fill="black", font=font_subtitle)
+    draw.text((1900, 1470), "જુનાગઢ", fill="black", font=font_subtitle)
 
     # ✅ Rules Section - Neatly Placed at the Bottom
     draw.line([(50, 1580), (2430, 1580)], fill="black", width=4)
