@@ -4,12 +4,12 @@
     <!-- Logo & Title -->
     <div class="flex items-center space-x-3">
         <img src="{% get_media_prefix %}GUJARAT POLICE LOGO PNG.png" class="w-20 h-20" alt="Logo">
-        <h1 class="text-5xl font-bold uppercase tracking-wide">Junagadh Police</h1>
+        <h1 class="text-5xl font-bold uppercase text-black tracking-wide">Junagadh Police</h1>
     </div>
 
     <!-- Navigation Links -->
     <nav class="hidden md:flex space-x-6">
-        <a href="{% url 'index' %}" class="text-white text-3xl hover:text-yellow-400 transition duration-300">Home</a>
+        <a href="{% url 'index' %}" class="text-black text-3xl hover:text-black-500 transition duration-300">Home</a>
         {% comment %} <a href="{% url 'check_status' %}" class="text-white hover:text-yellow-400 transition duration-300">Check Status</a>
         <a href="{% url 'issue_vehicle_pass' %}" class="text-white hover:text-yellow-400 transition duration-300">Issue Vehicle Pass</a> {% endcomment %}
         {% comment %} <a href="{% url 'press_pass_form' %}" class="text-white hover:text-yellow-400 transition duration-300">Issue press Pass</a> {% endcomment %}
