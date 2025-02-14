@@ -420,44 +420,48 @@ def export_gov_vehicle_passes(request):
     return response
 
 def update_pass_status(request, pass_id, status):
-    admin_id = request.session.get("user_id")  # Get admin ID from session
+    """Handles approval/rejection for regular users (not admins)."""
+    user_id = request.session.get("user_id")
 
     if status not in ["approved", "rejected"]:
         return HttpResponse("❌ Invalid Status!", status=400)
 
-    # ✅ Check in GovVehiclePass first
     vehicle_pass = GovVehiclePass.objects.filter(id=pass_id).first()
+    redirect_url = "approved_gov" if vehicle_pass else "approved_private"
+
     if not vehicle_pass:
-        # ✅ If not found in GovVehiclePass, check in VehiclePass
         vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
 
-    # ✅ Handle Rejection with Reason
+    if status == "approved":
+        messages.error(request, "⚠ You are not authorized to approve passes!")
+        return redirect(redirect_url)
+
     if status == "rejected":
         if request.method == "POST":
             reject_reason = request.POST.get("reject_reason", "").strip()
             if not reject_reason:
                 messages.error(request, "❌ Please provide a reason for rejection!")
-                return redirect("admin_vehicle_passes")  # Redirect back to admin panel
+                return redirect(redirect_url)
 
             vehicle_pass.status = "rejected"
             vehicle_pass.reject_reason = reject_reason
-            vehicle_pass.approved_by = admin_id  # Save admin who rejected it
             vehicle_pass.save()
 
             messages.success(request, "❌ Vehicle Pass Rejected Successfully!")
-            return redirect("admin_vehicle_passes")  # Redirect after rejection
+            return redirect(redirect_url)
 
         messages.error(request, "❌ Invalid request method for rejection!")
-        return redirect("admin_vehicle_passes")
-    
-def update_gov_pass_status(request, pass_id, status):
-    print("Session Data:", request.session.items())  # Debugging Line ✅
-    
-    if not request.session.get("user_id"):  # Check if session exists
-        messages.error(request, "⚠ Session expired! Please log in again.")
-        return redirect("login_view")
+        return redirect(redirect_url)
 
+    return redirect(redirect_url)
+
+
+def admin_update_pass_status(request, pass_id, status):
+    """Handles approval/rejection by admins only."""
     admin_id = request.session.get("user_id")
+    is_admin = request.session.get("is_admin", False)
+
+    
 
     if status not in ["approved", "rejected"]:
         return HttpResponse("❌ Invalid Status!", status=400)
@@ -466,12 +470,14 @@ def update_gov_pass_status(request, pass_id, status):
     if not vehicle_pass:
         vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
 
+    redirect_url = "admin_vehicle_passes"
+
     if status == "rejected":
         if request.method == "POST":
             reject_reason = request.POST.get("reject_reason", "").strip()
             if not reject_reason:
                 messages.error(request, "❌ Please provide a reason for rejection!")
-                return redirect("approved_gov")
+                return redirect(redirect_url)
 
             vehicle_pass.status = "rejected"
             vehicle_pass.reject_reason = reject_reason
@@ -479,10 +485,10 @@ def update_gov_pass_status(request, pass_id, status):
             vehicle_pass.save()
 
             messages.success(request, "❌ Vehicle Pass Rejected Successfully!")
-            return redirect("approved_gov")  
+            return redirect(redirect_url)
 
         messages.error(request, "❌ Invalid request method for rejection!")
-        return redirect("approved_gov")
+        return redirect(redirect_url)
 
     if status == "approved":
         vehicle_pass.status = "approved"
@@ -495,22 +501,8 @@ def update_gov_pass_status(request, pass_id, status):
 
         vehicle_pass.save()
 
-    return redirect("approved_gov")
-
-
-    # ✅ If approved, update status
-    if status == "approved":
-        vehicle_pass.status = "approved"
-        vehicle_pass.reject_reason = ""  # Clear rejection reason
-        vehicle_pass.approved_by = admin_id
-        vehicle_pass.approved_date = now().date()
-
-        if not vehicle_pass.pass_no:  # ✅ Only generate if not assigned yet
-            vehicle_pass.pass_no = vehicle_pass.generate_pass_no()  
-
-        vehicle_pass.save()
-
-    return redirect("admin_vehicle_passes")
+    messages.success(request, "✅ Vehicle Pass Approved Successfully!")
+    return redirect(redirect_url)
 
 def generate_pass_image(request, pass_id):
     # ✅ Get the pass record
@@ -606,11 +598,15 @@ def generate_pass_image(request, pass_id):
     # ✅ Pass Title
     draw.text((850, 280), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
 
+    formatted_date_start = vehicle_pass.start_date.strftime("%d-%m-%Y")
+    formatted_date_end = vehicle_pass.end_date.strftime("%d-%m-%Y")
+
+
     # ✅ Vehicle Entry Details with Dotted Lines
     fields = [
-        ("તારીખ:", vehicle_pass.start_date, 200, 500),
+        ("તારીખ:", formatted_date_start, 200, 500),
         ("થી", "", 1000, 500),
-        ("તારીખ:", vehicle_pass.end_date, 1200, 500),
+        ("તારીખ:", formatted_date_end, 1200, 500),
         ("વાહન નંબર:", vehicle_pass.vehicle_number, 200, 650),
         ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1200, 650),
         ("નામ:", vehicle_pass.name, 200, 800),
@@ -759,11 +755,14 @@ def generate_gov_pass_image(request, pass_id):
     # ✅ Pass Title
     draw.text((700, 280), "સરકારી વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
 
+    formatted_date_start = vehicle_pass.start_date.strftime("%d-%m-%Y")
+    formatted_date_end = vehicle_pass.end_date.strftime("%d-%m-%Y")
+
     # ✅ Vehicle Entry Details with Dotted Lines
     fields = [
-        ("તારીખ:", vehicle_pass.start_date, 200, 500),
+        ("તારીખ:", formatted_date_start, 200, 500),
         ("થી", "", 1000, 500),
-        ("તારીખ:", vehicle_pass.end_date, 1200, 500),
+        ("તારીખ:", formatted_date_end, 1200, 500),
         ("વાહન નંબર:", vehicle_pass.vehicle_number, 200, 650),
         ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1200, 650),
         ("નામ:", vehicle_pass.name, 200, 800),

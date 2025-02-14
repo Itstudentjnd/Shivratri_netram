@@ -115,7 +115,7 @@
                     <!-- ✅ Buttons -->
                     <div class="mt-4 flex flex-wrap gap-2">
                         <!-- ✔ Approve -->
-                        <a href="{% url 'update_pass_status' pass.id 'approved' %}"
+                        <a href="{% url 'admin_update_pass_status' pass.id 'approved' %}"
                         class="bg-green-500 text-white px-3 py-2 rounded-md text-sm hover:bg-green-600 transition">
                             ✔ Approve
                         </a>
@@ -186,7 +186,7 @@
     function openRejectModal(passId) {
         document.getElementById("rejectModal").style.display = "flex";
         document.getElementById("pass_id").value = passId;
-        document.getElementById("rejectForm").action = `/update-pass-status/${passId}/rejected/`; // ✅ Fixed String Formatting
+        document.getElementById("rejectForm").action = `/admin-update-pass-status/${passId}/rejected/`; // ✅ Fixed String Formatting
     }
     
     function closeRejectModal() {
