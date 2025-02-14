@@ -6,7 +6,7 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path("success/", lambda request: render(request, "success.html"), name="success_page"),
-    path("login_view/",views.login_view, name="login_view"),
+    path("",views.login_view, name="login_view"),
     path("logout_view/",views.logout_view, name="logout_view"),
     path('issue-gov-vehicle-pass/', views.issue_gov_vehicle_pass, name='issue_gov_vehicle_pass'),
     path('issue-vehicle-pass/', views.issue_vehicle_pass, name='issue_vehicle_pass'),
