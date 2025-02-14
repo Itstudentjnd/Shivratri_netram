@@ -1,4 +1,5 @@
 from django.db import models
+import random
 
 class Contact(models.Model):
     place = models.CharField(max_length=255)
@@ -61,8 +62,15 @@ class VehiclePass(models.Model):
     extra_place = models.CharField(max_length=255, blank=True, null=True)
     approved_by = models.IntegerField(null=True, blank=True)  # Stores Admin ID
     approved_date = models.DateField(null=True, blank=True)
+    pass_no = models.IntegerField(blank=True, null=True)
 
-
+    def generate_pass_no(self):
+        """Generates a unique random 3-digit pass number."""
+        while True:
+            new_pass_no = random.randint(100, 999)  # Generate 3-digit random number
+            if not VehiclePass.objects.filter(pass_no=new_pass_no).exists():
+                return new_pass_no
+            
     def __str__(self):
         return f"{self.name} - {self.vehicle_number} ({self.status})"
 

@@ -251,7 +251,9 @@ def update_pass_status(request, pass_id, status):
         vehicle_pass.status = "approved"
         vehicle_pass.reject_reason = ""  # Clear rejection reason
         vehicle_pass.approved_by = admin_id 
-        vehicle_pass.approved_date = now().date()   # ✅ Store Current Date
+        vehicle_pass.approved_date = now().date()
+        if not vehicle_pass.pass_no:  # ✅ Only generate if not assigned yet
+            vehicle_pass.pass_no = vehicle_pass.generate_pass_no()   # ✅ Store Current Date
         vehicle_pass.save()
         # return generate_pass_image(vehicle_pass)  # Generates the pass and returns response
 
@@ -287,10 +289,15 @@ def generate_pass_image(request, pass_id):
 
     # ✅ Header Section with Proper Alignment
     draw.text((550, 80), "જુનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_title)
-    draw.text((1900, 180), f"ઈશ્યુ તારીખ: {vehicle_pass.approved_date}", fill="black", font=font_text)  # Moved to the right corner
+      # Moved to the right corner
 
     # 🔹 Add a Bold Line Below the Header
     draw.line([(100, 260), (2380, 260)], fill="black", width=6)
+
+    formatted_date = vehicle_pass.approved_date.strftime("%d-%m-%Y")
+
+    draw.text((1900, 280), f"પાસ નંબર: {vehicle_pass.pass_no}", fill="black", font=font_text)
+    draw.text((1900, 380), f"ઈશ્યુ તારીખ: {formatted_date}", fill="black", font=font_text)
 
     # ✅ Police Logo with White Background
     logo_path = os.path.join(settings.MEDIA_ROOT, "junagadh_police.png")
@@ -319,7 +326,7 @@ def generate_pass_image(request, pass_id):
     if os.path.exists(center_img_path):
         center_img = Image.open(center_img_path).convert("RGBA")
         qr_size = qr_img.size[0]
-        center_img = center_img.resize((int(qr_size // 2.5), int(qr_size // 2.5)))  
+        center_img = center_img.resize((int(qr_size // 2.3), int(qr_size // 2.3)))  
 
         # ✅ Paste Center Image in the Middle of QR Code
         qr_x = (qr_img.size[0] - center_img.size[0]) // 2
@@ -327,7 +334,7 @@ def generate_pass_image(request, pass_id):
         qr_img.paste(center_img, (qr_x, qr_y), center_img)
 
     # ✅ Paste QR Code Properly (Reduced Size)
-    img.paste(qr_img.resize((400, 400)), (1900, 850))  # Adjusted positioning
+    img.paste(qr_img.resize((500, 500)), (1850, 870))  # Adjusted positioning
 
     # ✅ Function to Draw Dotted Lines
     def draw_dotted_line(draw, start_x, start_y, end_x, dot_spacing=20, dot_length=12):
@@ -341,13 +348,13 @@ def generate_pass_image(request, pass_id):
 
     # ✅ Vehicle Entry Details with Dotted Lines
     fields = [
-        ("પ્રારંભ તારીખ:", vehicle_pass.start_date, 200, 450),
-        ("અંતિમ તારીખ:", vehicle_pass.end_date, 1200, 450),
-        ("વાહન નંબર:", vehicle_pass.vehicle_number, 200, 600),
-        ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1200, 600),
-        ("નામ:", vehicle_pass.name, 200, 750),
-        ("મોબાઇલ:", vehicle_pass.mobile_no, 1200, 750),
-        ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 200, 900),
+        ("પ્રારંભ તારીખ:", vehicle_pass.start_date, 200, 500),
+        ("અંતિમ તારીખ:", vehicle_pass.end_date, 1200, 500),
+        ("વાહન નંબર:", vehicle_pass.vehicle_number, 200, 650),
+        ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1200, 650),
+        ("નામ:", vehicle_pass.name, 200, 800),
+        ("મોબાઇલ:", vehicle_pass.mobile_no, 1200, 800),
+        ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 200, 950),
     ]
 
     for label, value, x, y in fields:
@@ -361,8 +368,9 @@ def generate_pass_image(request, pass_id):
 
     # ✅ Rules Section with Perfect Spacing
     draw.line([(50, 1550), (2430, 1550)], fill="black", width=4)
-    draw.text((100, 1600), "પાસનું ડુપ્લીકેશન કે કલર ઝેરોક્સ કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_text)
-    draw.text((100, 1660), "ફરજ પરના પોલીસ કર્મચારીના વાસ્તવિક હુકમને આધિન રહેવું ફરજિયાત છે.", fill="black", font=font_text)
+    draw.text((100, 1600), "• પાસનું ડુપ્લીકેશન કે કલર ઝેરોક્સ કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_text)
+    draw.text((100, 1660), "• ફરજ પરના પોલીસ કર્મચારીના વાસ્તવિક હુકમને આધિન રહેવું ફરજિયાત છે.", fill="black", font=font_text)
+
 
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
