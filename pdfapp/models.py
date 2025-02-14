@@ -59,6 +59,8 @@ class VehiclePass(models.Model):
     travel_reason = models.CharField(max_length=255)
     extra_name = models.CharField(max_length=255, blank=True, null=True)
     extra_place = models.CharField(max_length=255, blank=True, null=True)
+    approved_by = models.IntegerField(null=True, blank=True)  # Stores Admin ID
+    approved_date = models.DateField(null=True, blank=True)
 
 
     def __str__(self):

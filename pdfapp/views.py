@@ -1,5 +1,7 @@
 import csv
-from datetime import datetime
+from datetime import datetime, timezone
+import zipfile
+import openpyxl
 import pandas as pd
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
@@ -28,8 +30,12 @@ def login_view(request):
             if user:
                 # ✅ Check both hashed and plain text passwords
                 if check_password(password, user.password) or password == user.password:
+                    # 🔹 Store user data in session
                     request.session['user_id'] = user.id
-                    request.session['role'] = user.role
+                    request.session['user_name'] = user.name  # Store user name
+                    request.session['mobile_no'] = user.mobile_no  # Store mobile no
+                    request.session['role'] = user.role  # Store role
+
                     # messages.success(request, "✅ Login successful!")
 
                     if user.role == "admin":
@@ -122,11 +128,15 @@ def issue_vehicle_pass(request):
             vehicle_pass.extra_name = extra_name if travel_reason != "other" else ""
             vehicle_pass.extra_place = extra_place if travel_reason != "other" else ""
 
-            # Set status to 'Pending'
+            # Set status to 'Pending' and Store Current Date & Time
             vehicle_pass.status = "pending"
+            vehicle_pass.applied_at = timezone.now()  # ✅ Store current datetime
             vehicle_pass.save()
 
-            messages.success(request, "✅ તમારા વાહન પાસ માટેની અરજી સફળતાપૂર્વક સબમિટ થઈ ગયેલ છે! જાણકારી માટે સાઇટ ચકાસતા રહો.")
+            # ✅ Format Date & Time for Display
+            formatted_datetime = vehicle_pass.applied_at.strftime("%d-%m-%Y %I:%M %p")
+
+            messages.success(request, f"✅ તમારું વાહન પાસ {formatted_datetime} પર સફળતાપૂર્વક સબમિટ થયું! જાણકારી માટે સાઇટ ચકાસતા રહો.")
             return redirect("index")
 
         else:
@@ -143,50 +153,70 @@ def issue_vehicle_pass(request):
 # ✅ Admin Panel to View Requests
 def admin_vehicle_passes(request):
     if request.session.get("role") == "admin":
-        passes = VehiclePass.objects.all().order_by('-id')  # Fetch all records, latest first
-        return render(request, 'admin_vehicle_passes.html', {'passes': passes})
+        passes = VehiclePass.objects.all().order_by('-id')  # Latest first
+        total_requests = passes.count()  # Total number of vehicle passes
+
+        # 🔹 Get user details for approval tracking
+        for pass_obj in passes:
+            if pass_obj.approved_by:  # If approved/rejected by someone
+                user = User.objects.filter(id=pass_obj.approved_by).first()
+                pass_obj.approved_by_name = user.name if user else "Unknown"
+
+        return render(request, 'admin_vehicle_passes.html', {'passes': passes, 'total_requests': total_requests})
+    
+
     return HttpResponse("❌ Access Denied! Admins only.", status=403)
 
 def export_vehicle_passes(request):
-    if request.session.get("role") != "admin":
-        return HttpResponse("❌ Access Denied! Admins only.", status=403)
+    # ✅ Create a new Excel workbook and sheet
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Vehicle Passes"
 
-    # ✅ Create response with CSV MIME type
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="vehicle_passes_{now().strftime("%Y-%m-%d")}.csv"'
+    # ✅ Add Headers (Gujarati & English Supported)
+    headers = ["ID", "Vehicle Number", "Applicant Name", 
+               "Mobile", "Vehicle Type", "Reason", 
+               "Extra Name", "Extra Place", 
+               "Start Date", "End Date", "Applied At", 
+               "Status", "Approved Date", "Approved By", 
+               "Rejection Reason"]
+    sheet.append(headers)
 
-    # ✅ Write CSV header
-    writer = csv.writer(response)
-    writer.writerow([
-        "ID", "Name", "Vehicle Number", "Vehicle Type",
-        "Status", "Reject Reason", "Request Date", "Approved/Rejected Time",
-        "Downloaded By", "Approved/Rejected By", "Aadhar Front", "Aadhar Back",
-        "RC Book", "Driving License"
-    ])
+    # ✅ Fetch all passes
+    passes = VehiclePass.objects.all()
+    
+    # ✅ Create a dictionary to cache user names (avoid multiple DB queries)
+    user_cache = {}
 
-    # ✅ Fetch all passes and write data
-    passes = VehiclePass.objects.all().order_by('-id')
     for p in passes:
-        # Check if your model has date fields
+        # 🔹 Get Approved By Name
+        approved_by_name = ""
+        if p.approved_by:  # If approved_by is not None
+            if p.approved_by in user_cache:
+                approved_by_name = user_cache[p.approved_by]  # Get from cache
+            else:
+                user = User.objects.filter(id=p.approved_by).first()  # Fetch User
+                approved_by_name = user.name if user else ""  # Get Name or Empty
+                user_cache[p.approved_by] = approved_by_name  # Store in cache
 
-        aadhaar_front = request.build_absolute_uri(p.aadhaar_front.url) if hasattr(p, "aadhaar_front") and p.aadhaar_front else "N/A"
-        aadhaar_back = request.build_absolute_uri(p.aadhaar_back.url) if hasattr(p, "aadhaar_back") and p.aadhaar_back else "N/A"
-        rc_book = request.build_absolute_uri(p.rc_book.url) if hasattr(p, "rc_book") and p.rc_book else "N/A"
-        license_photo = request.build_absolute_uri(p.license_photo.url) if hasattr(p, "license_photo") and p.license_photo else "N/A"
-
-        writer.writerow([
-            p.id,
-            p.name,
-            p.vehicle_number,
-            p.vehicle_type,
-            p.status,
-            p.reject_reason if hasattr(p, "reject_reason") and p.reject_reason else "N/A",
-            aadhaar_front,  # Aadhar Front Image URL
-            aadhaar_back,  # Aadhar Back Image URL
-            rc_book,  # RC Book Image URL
-            license_photo  # Driving License Image URL
+        # 🔹 Append Data to Excel
+        sheet.append([
+            p.id, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
+            p.travel_reason, p.extra_name, p.extra_place, 
+            p.start_date, p.end_date, 
+            p.applied_at.strftime("%d-%m-%Y %I:%M %p"), 
+            p.status, 
+            p.approved_date if p.approved_date else "", 
+            approved_by_name,  # ✅ Show Name Instead of ID
+            p.reject_reason if p.status == "rejected" else ""
         ])
 
+    # ✅ Set Response Headers for Excel Download
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="vehicle_passes.xlsx"'
+    
+    # ✅ Save the workbook to response
+    workbook.save(response)
     return response
 
 def update_pass_status(request, pass_id, status):
@@ -194,6 +224,7 @@ def update_pass_status(request, pass_id, status):
 
     if status not in ["approved", "rejected"]:
         return HttpResponse("❌ Invalid Status!", status=400)
+    admin_id = request.session.get("user_id")  # Get admin ID from session
 
     # ✅ Handle Rejection with Reason
     if status == "rejected":
@@ -204,7 +235,8 @@ def update_pass_status(request, pass_id, status):
                 return redirect("admin_vehicle_passes")  # Redirect back to admin panel
 
             vehicle_pass.status = "rejected"
-            vehicle_pass.reject_reason = reject_reason  # Save rejection reason
+            vehicle_pass.reject_reason = reject_reason
+            vehicle_pass.approved_by = admin_id  # Save rejection reason
             vehicle_pass.save()
 
             messages.success(request, "❌ Vehicle Pass Rejected Successfully!")
@@ -218,69 +250,56 @@ def update_pass_status(request, pass_id, status):
     if status == "approved":
         vehicle_pass.status = "approved"
         vehicle_pass.reject_reason = ""  # Clear rejection reason
+        vehicle_pass.approved_by = admin_id 
+        vehicle_pass.approved_date = now().date()   # ✅ Store Current Date
         vehicle_pass.save()
-        return generate_pass_image(vehicle_pass)  # Generates the pass and returns response
+        # return generate_pass_image(vehicle_pass)  # Generates the pass and returns response
 
-    return redirect("admin_vehicle_passes")
+    return redirect("admin_vehicle_passes") 
 
 
-def generate_pass_image(vehicle_pass):
-    """Generate a professional Gujarat Police vehicle pass (A5 Landscape)."""
+def generate_pass_image(request, pass_id):
+    # ✅ Get the pass record
+    vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
 
-    last_id = vehicle_pass.id  # Last ID of the pass
-    serial_number = f"{last_id:03d}"  # Convert to 3-digit format (e.g., 001, 002, 003)
-    issue_date = datetime.today().strftime("%d-%m-%Y")  # e.g., 15-02-2025
+    # ✅ Ensure pass is approved
+    if vehicle_pass.status != "approved":
+        return JsonResponse({"error": "Pass is not approved yet."}, status=400)
 
-    
+    issue_date = datetime.today().strftime("%d-%m-%Y")
 
     # ✅ Set Image Size (A5 Landscape: 2480x1748 pixels)
     image_size = (2480, 1748)
     img = Image.new("RGB", image_size, "white")  # White background
     draw = ImageDraw.Draw(img)
 
-    # ✅ Load Gujarati Font (Noto Sans Gujarati for proper rendering)
+    # ✅ Load Gujarati Font
     def load_font(font_name, size):
-        """Load a proper Unicode font that supports Gujarati."""
-        font_path = os.path.join("media", "font", font_name)
+        font_path = os.path.join(settings.MEDIA_ROOT, "font", font_name)
         try:
-            font = ImageFont.truetype(font_path, size)
-            return font
+            return ImageFont.truetype(font_path, size)
         except IOError:
-            return ImageFont.truetype("arial.ttf", size)  # Fallback
+            return ImageFont.truetype("arial.ttf", size)
 
     # 🔹 Use "Noto Sans Gujarati" for proper rendering
-    font_title = load_font("NotoSansGujarati-Bold.ttf", 85)  # Main Title
-    font_subtitle = load_font("NotoSansGujarati-Regular.ttf", 65)  # Subtitle
-    font_details = load_font("NotoSansGujarati-Regular.ttf", 50)  # Details
-    font_small = load_font("NotoSansGujarati-Regular.ttf", 40)  # Smaller text
-    font_rules = load_font("NotoSansGujarati-Regular.ttf", 38)  # Rules Section
+    font_title = load_font("NotoSansGujarati-Bold.ttf", 90)  # Main Title
+    font_text = load_font("NotoSansGujarati-Regular.ttf", 50)  # Uniform Font Size
 
-    # ✅ Blue Header for Official Look
-    draw.rectangle([(0, 0), (2480, 220)], fill="#ffffff")  # Blue Top Header
-    draw.text((350, 60), "જૂનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_title)
+    # ✅ Header Section with Proper Alignment
+    draw.text((550, 80), "જુનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_title)
+    draw.text((1900, 180), f"ઈશ્યુ તારીખ: {vehicle_pass.approved_date}", fill="black", font=font_text)  # Moved to the right corner
 
-    draw.text((1900, 50), f"પાસ નં.: {serial_number}", fill="black", font=font_details)
-    draw.text((1900, 130), f"ઈશ્યુ તારીખ: {issue_date}", fill="black", font=font_details)
+    # 🔹 Add a Bold Line Below the Header
+    draw.line([(100, 260), (2380, 260)], fill="black", width=6)
 
-
-    # ✅ Load & Position Police Logo
-    logo_path = os.path.join("media", "GUJARAT POLICE LOGO PNG.png")
+    # ✅ Police Logo with White Background
+    logo_path = os.path.join(settings.MEDIA_ROOT, "junagadh_police.png")
     if os.path.exists(logo_path):
-        police_logo = Image.open(logo_path).convert("RGBA")  # Convert to RGBA (Handles Transparency)
-        
-        # Create a white background image with same size as the logo
-        background = Image.new("RGBA", police_logo.size, (255, 255, 255, 255))  
-        
-        # Paste the logo onto the white background
-        police_logo = Image.alpha_composite(background, police_logo).convert("RGB")  
-        
-        police_logo = police_logo.resize((180, 180))
-        img.paste(police_logo, (100, 20))
-    
-    
+        police_logo = Image.open(logo_path).convert("RGBA")
+        police_logo = police_logo.resize((200, 200))
+        img.paste(police_logo, (100, 20), police_logo)
 
-
-    # ✅ QR Code Generation with Embedded Gujarat Police Logo
+    # ✅ QR Code (Reduced Size)
     qr_data = f"""
     વાહન પરવાનગી ID: {vehicle_pass.id}
     નામ: {vehicle_pass.name}
@@ -290,76 +309,106 @@ def generate_pass_image(vehicle_pass):
     શરુઆત: {vehicle_pass.start_date}
     અંતિમ: {vehicle_pass.end_date}
     """
-
-    qr = qrcode.QRCode(
-        version=5,
-        error_correction=qrcode.constants.ERROR_CORRECT_H,
-        box_size=10,
-        border=2,
-    )
+    qr = qrcode.QRCode(version=5, error_correction=qrcode.constants.ERROR_CORRECT_H, box_size=8, border=2)  # Reduced size
     qr.add_data(qr_data)
     qr.make(fit=True)
-
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
-    # ✅ Embed Gujarat Police Logo in QR Code
-    if os.path.exists(logo_path):
-        logo = Image.open(logo_path)
-        logo_size = (320, 320)  # Resize logo to fit inside QR
-        logo = logo.resize(logo_size)
+    # ✅ Load Center Image for QR Code
+    center_img_path = os.path.join(settings.MEDIA_ROOT, "GUJARAT POLICE LOGO PNG.png")
+    if os.path.exists(center_img_path):
+        center_img = Image.open(center_img_path).convert("RGBA")
+        qr_size = qr_img.size[0]
+        center_img = center_img.resize((int(qr_size // 2.5), int(qr_size // 2.5)))  
 
-        # Get QR size and calculate logo position
-        qr_width, qr_height = qr_img.size
-        logo_position = ((qr_width - logo_size[0]) // 2, (qr_height - logo_size[1]) // 2)
+        # ✅ Paste Center Image in the Middle of QR Code
+        qr_x = (qr_img.size[0] - center_img.size[0]) // 2
+        qr_y = (qr_img.size[1] - center_img.size[1]) // 2
+        qr_img.paste(center_img, (qr_x, qr_y), center_img)
 
-        # Paste the logo at the center of QR Code
-        qr_img.paste(logo, logo_position, mask=logo)
+    # ✅ Paste QR Code Properly (Reduced Size)
+    img.paste(qr_img.resize((400, 400)), (1900, 850))  # Adjusted positioning
 
-    # ✅ Paste QR Code on Vehicle Pass (No Blue Strip Above)
-    img.paste(qr_img.resize((500, 500)), (1850, 700))  # Bottom Right Side
-
-    # ✅ Draw a Line Below Header for Separation
-    draw.line([(50, 230), (2430, 230)], fill="black", width=5)
+    # ✅ Function to Draw Dotted Lines
+    def draw_dotted_line(draw, start_x, start_y, end_x, dot_spacing=20, dot_length=12):
+        x = start_x
+        while x < end_x:
+            draw.line([(x, start_y), (x + dot_length, start_y)], fill="black", width=3)
+            x += dot_spacing  
 
     # ✅ Pass Title
-    draw.text((870, 300), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
+    draw.text((850, 280), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
 
-    # ✅ Date Section - Proper Alignment
-    draw.text((200, 480), f"તારીખ: {vehicle_pass.start_date}", fill="black", font=font_details)
-    draw.text((700, 480), f"થી", fill="black", font=font_details)
-    draw.text((850, 480), f"તારીખ : {vehicle_pass.end_date}", fill="black", font=font_details)
-    draw.text((1350, 480), f"સુધી ", fill="black", font=font_details)
-    # ✅ Vehicle Details - Structured Alignment
-    draw.text((200, 600), f"વાહન નંબર: {vehicle_pass.vehicle_number}", fill="black", font=font_subtitle)
-    draw.text((200, 720), f"વાહન પ્રકાર: {vehicle_pass.vehicle_type}", fill="black", font=font_subtitle)
+    # ✅ Vehicle Entry Details with Dotted Lines
+    fields = [
+        ("પ્રારંભ તારીખ:", vehicle_pass.start_date, 200, 450),
+        ("અંતિમ તારીખ:", vehicle_pass.end_date, 1200, 450),
+        ("વાહન નંબર:", vehicle_pass.vehicle_number, 200, 600),
+        ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1200, 600),
+        ("નામ:", vehicle_pass.name, 200, 750),
+        ("મોબાઇલ:", vehicle_pass.mobile_no, 1200, 750),
+        ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 200, 900),
+    ]
 
-    # ✅ Applicant Information - Clean Layout
-    draw.text((200, 860), f"નામ: {vehicle_pass.name}", fill="black", font=font_details)
-    draw.text((200, 980), f"મોબાઇલ: {vehicle_pass.mobile_no}", fill="black", font=font_details)
-    draw.text((200, 1100), f"પ્રવાસનું કારણ: {vehicle_pass.travel_reason}", fill="black", font=font_details)
+    for label, value, x, y in fields:
+        draw.text((x, y), label, fill="black", font=font_text)
+        draw.text((x + 400, y), f"{value}", fill="black", font=font_text)
+        draw_dotted_line(draw, x, y + 60, x + 800)  
 
     # ✅ Police Officer Signature Section
-    draw.text((1900, 1400), "પોલીસ અધીક્ષક", fill="black", font=font_subtitle)
-    draw.text((1900, 1470), "જુનાગઢ", fill="black", font=font_subtitle)
+    draw.text((1950, 1400), "પોલીસ અધીક્ષક", fill="black", font=font_text)
+    draw.text((2050, 1460), "જુનાગઢ", fill="black", font=font_text)
 
-    # ✅ Rules Section - Neatly Placed at the Bottom
-    draw.line([(50, 1580), (2430, 1580)], fill="black", width=4)
-    draw.text((100, 1620), "પાસનું ડુપ્લીકેશન કે કલર ઝેરોક્સ કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_rules)
-    draw.text((100, 1680), "ફરજ પરના પોલીસ કર્મચારીના વાસ્તવિક હુકમને આધિન રહેવું ફરજિયાત છે.", fill="black", font=font_rules)
+    # ✅ Rules Section with Perfect Spacing
+    draw.line([(50, 1550), (2430, 1550)], fill="black", width=4)
+    draw.text((100, 1600), "પાસનું ડુપ્લીકેશન કે કલર ઝેરોક્સ કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_text)
+    draw.text((100, 1660), "ફરજ પરના પોલીસ કર્મચારીના વાસ્તવિક હુકમને આધિન રહેવું ફરજિયાત છે.", fill="black", font=font_text)
 
-    vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehical-pass")
+    # ✅ Save Image
+    vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
     image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.vehicle_number}.png')
 
     img.save(image_path)
 
-    # ✅ Save Image to Response
+    # ✅ Return Image Response
     response = HttpResponse(content_type="image/png")
     img.save(response, "PNG")
     response['Content-Disposition'] = f'attachment; filename="{vehicle_pass.vehicle_number}.png"'
     return response
 
+def download_images(request, pass_id):
+    # ✅ Get the vehicle pass record
+    vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
 
+    # ✅ Get all images associated with the pass
+    image_fields = ['aadhaar_front', 'aadhaar_back', 'rc_book', 'license_photo']
+    image_paths = [getattr(vehicle_pass, field).path for field in image_fields if getattr(vehicle_pass, field)]
+
+    if not image_paths:
+        return HttpResponse("No images available for this pass.", content_type="text/plain")
+
+    # ✅ Define ZIP file name (use vehicle number)
+    zip_filename = f"{vehicle_pass.vehicle_number}.zip"
+    zip_filepath = os.path.join(settings.MEDIA_ROOT, "temp_zips", zip_filename)
+
+    # ✅ Ensure temp_zips folder exists
+    os.makedirs(os.path.dirname(zip_filepath), exist_ok=True)
+
+    # ✅ Create a ZIP file and add images
+    with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for image_path in image_paths:
+            zip_file.write(image_path, os.path.basename(image_path))  # Save inside ZIP
+
+    # ✅ Serve the ZIP file for download
+    with open(zip_filepath, 'rb') as zip_file:
+        response = HttpResponse(zip_file.read(), content_type="application/zip")
+        response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+    
+    # ✅ Delete the ZIP after serving (optional for cleanup)
+    os.remove(zip_filepath)
+
+    return response
 
 # def press_pass_form(request):
 #     if request.method == "POST":

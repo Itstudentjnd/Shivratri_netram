@@ -20,6 +20,8 @@ urlpatterns = [
     # path("download/vehicle-pass/<int:pass_id>/", views.generate_pass_image, name="download_vehicle_pass"),
     path('check_status/', views.check_pass_status, name='check_status'),
     path('export_vehicle_passes/', views.export_vehicle_passes, name='export_vehicle_passes'),  # ✅ New export URL
+    path('generate-pass/<int:pass_id>/', views.generate_pass_image, name='generate_pass_image'),
+    path('download-images/<int:pass_id>/', views.download_images, name='download_images'),
     
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
