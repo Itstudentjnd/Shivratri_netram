@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vehicle Pass Approval | Gujarat Police</title>
+    <title>જુનાગઢ પોલીસ</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gradient-to-r from-blue-900 to-blue-700 text-white min-h-screen flex flex-col">
@@ -68,7 +68,9 @@
                     <!-- 🗓 Dates -->
                     <p class="text-gray-500 text-sm"><strong>Start:</strong> {{ pass.start_date }}</p>
                     <p class="text-gray-500 text-sm"><strong>End:</strong> {{ pass.end_date }}</p>
-                    <p class="text-gray-500 text-sm"><strong>Applied:</strong> {{ pass.applied_at|date:"d-m-Y h:i A" }}</p>
+                    <p class="text-gray-500 text-sm"><strong>Applied At:</strong> {{ pass.applied_at|date:"d-m-Y h:i A" }}</p>
+                    <p class="text-gray-500 text-sm"><strong>Approved At:</strong> {{ pass.approved_date }}</p>
+                    <p class="text-gray-500 text-sm"><strong>Approved by:</strong> {{ pass.approved_by }}</p>
     
                     <!-- 📝 Rejection Reason -->
                     {% if pass.status == "rejected" %}
