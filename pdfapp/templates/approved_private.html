@@ -25,10 +25,7 @@
                 📊 Download Private Vehicle Data Excel
             </a>
 
-            <a href="{% url 'export_gov_vehicle_passes' %}" 
-                class="bg-green-600 text-white m-2 font-semibold px-4 py-2 rounded-md text-sm md:text-base hover:bg-green-700 transition shadow-md flex items-center gap-2">
-                📊 Download Goverment Vehicle Data Excel
-            </a>
+            
         </div>
         
     
@@ -84,9 +81,6 @@
     
                     <!-- 📄 Documents -->
                     <div class="mt-2">
-                        {% if pass.photo1 %}
-                            <a href="{{ pass.photo1.url }}" target="_blank" class="text-blue-600 text-xs">Gov Letter</a> |
-                        {% endif %}
                         {% if pass.aadhaar_front %}
                             <a href="{{ pass.aadhaar_front.url }}" target="_blank" class="text-blue-600 text-xs">Aadhaar Front</a> |
                         {% endif %}

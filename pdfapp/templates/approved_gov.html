@@ -10,21 +10,14 @@
 <body class="bg-gradient-to-r from-blue-900 to-blue-700 text-white min-h-screen flex flex-col">
 
     <!-- ✅ Navbar Include -->
-    {% include 'sidebar.html' %}
-
-    
+    {% include 'navbar1.html' %}
 
     <div class="container mx-auto p-4 md:p-6 mt-16">
         <h2 class="text-2xl md:text-3xl font-bold text-center mb-6">
-            🚔 Vehicle Pass Requests (Total: <span id="totalRequests">{{ total_requests }}</span>)
+            🚔 Goverment Vehicle Pass Requests (Total: <span id="totalRequests">{{ total_requests }}</span>)
         </h2>
 
         <div class="flex justify-end mb-4">
-            <a href="{% url 'export_vehicle_passes' %}" 
-                class="bg-green-600 text-white m-2 font-semibold px-4 py-2 rounded-md text-sm md:text-base hover:bg-green-700 transition shadow-md flex items-center gap-2">
-                📊 Download Private Vehicle Data Excel
-            </a>
-
             <a href="{% url 'export_gov_vehicle_passes' %}" 
                 class="bg-green-600 text-white m-2 font-semibold px-4 py-2 rounded-md text-sm md:text-base hover:bg-green-700 transition shadow-md flex items-center gap-2">
                 📊 Download Goverment Vehicle Data Excel
@@ -68,7 +61,6 @@
                     <p class="text-gray-600"><strong>Type:</strong> {{ pass.vehicle_type }}</p>
                     <p class="text-gray-600"><strong>Reason:</strong> {{ pass.travel_reason }}</p>
                     <p class="text-gray-600"><strong>Extra Name:</strong> {{ pass.extra_name }}</p>
-                    <p class="text-gray-600"><strong>Extra Place:</strong> {{ pass.extra_place }}</p>
     
                     <!-- 🗓 Dates -->
                     <p class="text-gray-500 text-sm"><strong>Start:</strong> {{ pass.start_date }}</p>
@@ -86,18 +78,6 @@
                     <div class="mt-2">
                         {% if pass.photo1 %}
                             <a href="{{ pass.photo1.url }}" target="_blank" class="text-blue-600 text-xs">Gov Letter</a> |
-                        {% endif %}
-                        {% if pass.aadhaar_front %}
-                            <a href="{{ pass.aadhaar_front.url }}" target="_blank" class="text-blue-600 text-xs">Aadhaar Front</a> |
-                        {% endif %}
-                        {% if pass.aadhaar_back %}
-                            <a href="{{ pass.aadhaar_back.url }}" target="_blank" class="text-blue-600 text-xs">Aadhaar Back</a> |
-                        {% endif %}
-                        {% if pass.rc_book %}
-                            <a href="{{ pass.rc_book.url }}" target="_blank" class="text-blue-600 text-xs">RC Book</a> |
-                        {% endif %}
-                        {% if pass.license_photo %}
-                            <a href="{{ pass.license_photo.url }}" target="_blank" class="text-blue-600 text-xs">License</a>
                         {% endif %}
                     </div>
     
