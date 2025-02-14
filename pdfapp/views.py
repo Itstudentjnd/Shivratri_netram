@@ -166,6 +166,7 @@ def admin_vehicle_passes(request):
         passes = VehiclePass.objects.all().order_by('-id')  # Latest first
         total_requests = passes.count()  # Total number of vehicle passes
 
+        vehicle_passes = VehiclePass.objects.all().select_related("approved_by")
         # 🔹 Get user details for approval tracking
         for pass_obj in passes:
             if pass_obj.approved_by:  # If approved/rejected by someone
@@ -344,7 +345,7 @@ def generate_pass_image(request, pass_id):
         qr_img.paste(center_img, (qr_x, qr_y), center_img)
 
     # ✅ Paste QR Code Properly (Reduced Size)
-    img.paste(qr_img.resize((500, 500)), (1850, 870))  # Adjusted positioning
+    img.paste(qr_img.resize((500, 500)), (1000, 1000))  # Adjusted positioning
 
     # ✅ Function to Draw Dotted Lines
     def draw_dotted_line(draw, start_x, start_y, end_x, dot_spacing=20, dot_length=12):
