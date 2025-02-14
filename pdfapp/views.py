@@ -60,10 +60,17 @@ def login_view(request):
 
 # ✅ Logout View
 def logout_view(request):
-    logout(request)  # ✅ Correctly logs out the user
-    request.session.flush()  # Clear session data
+    logout(request)  # ✅ Logout user
+    request.session.flush()  # ✅ Destroy session completely
     messages.success(request, "✅ Logged out successfully!")
-    return redirect("login_view")  # Redirect to login page
+
+    response = redirect("login_view")  # ✅ Redirect to login page
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    
+    return response
+
 
 
 
