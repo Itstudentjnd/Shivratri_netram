@@ -17,6 +17,7 @@ from django.contrib.auth.hashers import check_password
 from django.contrib.auth import logout
 from PIL import Image, ImageDraw, ImageFont
 from django.utils.timezone import now
+from django.utils import timezone
 
 # ✅ Login View
 def login_view(request):
