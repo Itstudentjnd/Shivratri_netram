@@ -91,7 +91,7 @@ def check_pass_status(request):
 
 def issue_vehicle_pass(request):
     if request.method == "POST":
-        # Vehicle Number Construction
+        # 🚗 Construct Vehicle Number
         vehicle_number = (
             request.POST.get("state_code", "").upper()
             + request.POST.get("city_code", "")
@@ -99,49 +99,58 @@ def issue_vehicle_pass(request):
             + request.POST.get("digits", "")
         )
 
-        # Check for duplicate vehicle number
+        # 🚨 Check for Duplicate Vehicle Number
         if VehiclePass.objects.filter(vehicle_number=vehicle_number).exists():
             messages.error(request, f"🚨 આ વાહન નંબર ({vehicle_number}) માટે પહેલેથી જ અરજી થઈ ચૂકી છે!")
             return redirect("issue_vehicle_pass")
 
+        # 📝 Process Form Data
         form = VehiclePassForm(request.POST, request.FILES)
-
+        
         if form.is_valid():
             vehicle_pass = form.save(commit=False)
             vehicle_pass.vehicle_number = vehicle_number
             vehicle_pass.mobile_no = request.POST.get("mobile_no", "")
 
-            # File Uploads
-            vehicle_pass.aadhaar_front = request.FILES.get("aadhaar_front", None)
-            vehicle_pass.aadhaar_back = request.FILES.get("aadhaar_back", None)
-            vehicle_pass.rc_book = request.FILES.get("rc_book", None)
-            vehicle_pass.license_photo = request.FILES.get("license_photo", None)
+            # 📂 Handle File Uploads
+            vehicle_pass.aadhaar_front = request.FILES.get("aadhaar_front")
+            vehicle_pass.aadhaar_back = request.FILES.get("aadhaar_back")
+            vehicle_pass.rc_book = request.FILES.get("rc_book")
+            vehicle_pass.license_photo = request.FILES.get("license_photo")
 
-            # Travel Reason & Extra Fields
-            travel_reason = request.POST.get("travel_reason")
-            extra_name = request.POST.get("extra_name", "")
-            extra_place = request.POST.get("extra_place", "")
-            other_reason = request.POST.get("other_reason", "")
+            # 📌 Travel Reason Handling
+            travel_reason = request.POST.get("travel_reason", "").strip()
+            extra_name = request.POST.get("extra_name", "").strip()
+            extra_place = request.POST.get("extra_place", "").strip()
+            other_reason = request.POST.get("other_reason", "").strip()
 
-            # If 'Other' is selected, use other_reason, else use selected reason
-            final_reason = other_reason if travel_reason == "other" else travel_reason
+            # 🛠 Fix: Ensure 'Other Reason' is not empty if selected
+            if travel_reason == "other":
+                if not other_reason:
+                    messages.error(request, "❌ જો તમે 'અન્ય' પસંદ કરો છે, તો કૃપા કરીને કારણ દાખલ કરો!")
+                    return redirect("issue_vehicle_pass")
+                final_reason = other_reason
+                extra_name, extra_place = "", ""  # 🔥 Clear extra fields for 'Other' selection
+            else:
+                final_reason = travel_reason
+
             vehicle_pass.travel_reason = final_reason
-            vehicle_pass.extra_name = extra_name if travel_reason != "other" else ""
-            vehicle_pass.extra_place = extra_place if travel_reason != "other" else ""
+            vehicle_pass.extra_name = extra_name
+            vehicle_pass.extra_place = extra_place
 
-            # Set status to 'Pending' and Store Current Date & Time
+            # 🚀 Set Status & Date
             vehicle_pass.status = "pending"
-            vehicle_pass.applied_at = timezone.now()  # ✅ Store current datetime
+            vehicle_pass.applied_at = timezone.now()
+
             vehicle_pass.save()
 
             # ✅ Format Date & Time for Display
             formatted_datetime = vehicle_pass.applied_at.strftime("%d-%m-%Y %I:%M %p")
-
             messages.success(request, f"✅ તમારું વાહન પાસ {formatted_datetime} પર સફળતાપૂર્વક સબમિટ થયું! જાણકારી માટે સાઇટ ચકાસતા રહો.")
             return redirect("index")
 
         else:
-            print(form.errors)  # Debugging step: Print form errors in console
+            print(form.errors)  # 🐞 Debugging step: Print form errors in console
             messages.error(request, "❌ કૃપા કરીને બધી વિગતો સાચી રીતે ભરો.")
 
     else:
