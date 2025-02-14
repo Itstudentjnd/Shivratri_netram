@@ -146,7 +146,7 @@ def issue_vehicle_pass(request):
 
             # ✅ Format Date & Time for Display
             formatted_datetime = vehicle_pass.applied_at.strftime("%d-%m-%Y %I:%M %p")
-            messages.success(request, f"✅ તમારું વાહન પાસ {formatted_datetime} પર સફળતાપૂર્વક સબમિટ થયું! જાણકારી માટે સાઇટ ચકાસતા રહો.")
+            messages.success(request, f"✅ વાહન પાસ પર સફળતાપૂર્વક સબમિટ થય ગયેલ છે! જાણકારી માટે સાઇટ ચકાસતા રહો.")
             return redirect("index")
 
         else:
