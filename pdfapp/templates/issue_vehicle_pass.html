@@ -98,9 +98,9 @@
                     <select name="travel_reason" id="travel_reason"
                         class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                         <option value="" selected disabled>કારણ પસંદ કરો</option>
-                        <option value="અન્નક્ષેત્રનું નામ" data-place="અન્નક્ષેત્રનું સરનામું">અન્નક્ષેત્ર માટે</option>
-                        <option value="આશ્રમ/મંદીરનું નામ" data-place="આશ્રમ/મંદીરનું સરનામું">આશ્રમ સેવા / પૂજા</option>
-                        <option value="વેપાર / રોજગારનું નામ" data-place="વેપાર / રોજગારનું સરનામું">વેપાર / રોજગાર માટે</option>
+                        <option value="અન્નક્ષેત્ર" data-place="અન્નક્ષેત્રનું સરનામું">અન્નક્ષેત્ર માટે</option>
+                        <option value="આશ્રમ/મંદીર " data-place="આશ્રમ/મંદીરનું સરનામું">આશ્રમ સેવા / પૂજા</option>
+                        <option value="વેપાર / રોજગાર " data-place="વેપાર / રોજગારનું સરનામું">વેપાર / રોજગાર માટે</option>
                         <option value="અન્ય">અન્ય</option>
                     </select>
                 </div>
@@ -237,7 +237,7 @@
                     let reasonText = selectedOption.value;
                     let placeText = selectedOption.getAttribute("data-place") || "સ્થળ";
         
-                    selectedReasonLabel.innerHTML = `👤 ${reasonText}`;
+                    selectedReasonLabel.innerHTML = `👤 ${reasonText} નામ`;
                     selectedPlaceLabel.innerHTML = `📍 ${placeText}`;
         
                     {% comment %} extraName.value = reasonText;
