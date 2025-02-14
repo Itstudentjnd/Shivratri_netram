@@ -1,5 +1,5 @@
 from django import forms
-from .models import User, VehiclePass, PressPass
+from .models import User, VehiclePass, PressPass, GovVehiclePass
 from django.contrib.auth.hashers import make_password
 
 class CSVUploadForm(forms.Form):
@@ -32,6 +32,14 @@ class VehiclePassForm(forms.ModelForm):
             "name", "mobile_no", "vehicle_type", "start_date", "end_date", 
             "travel_reason", "aadhaar_front", "aadhaar_back", "rc_book", "license_photo"
         ]  # Exclude "vehicle_number" since we create it manually
+
+class GovVehiclePassForm(forms.ModelForm):
+    class Meta:
+        model = GovVehiclePass
+        fields = [
+            "name", "mobile_no", "vehicle_type", "start_date", "end_date", 
+            "travel_reason", "photo1"
+        ]  # Exclude "vehicle_number" s
 
 class PressPassForm(forms.ModelForm):
     class Meta:
