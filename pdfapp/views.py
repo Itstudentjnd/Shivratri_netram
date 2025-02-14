@@ -89,18 +89,27 @@ def check_pass_status(request):
             # ✅ Construct full vehicle number in proper format
             vehicle_number = f"{state_code}{city_code}{series}{digits}"
 
+            # 🔍 **Check in both tables**
             try:
-                vehicle_pass = VehiclePass.objects.get(vehicle_number=vehicle_number)
+                # ✅ First, check in GovVehiclePass
+                vehicle_pass = GovVehiclePass.objects.get(vehicle_number=vehicle_number)
                 pass_status = vehicle_pass.status
-                reject_reason = vehicle_pass.reject_reason if pass_status == "rejected" else None  # Fetch reason only if rejected
-            except VehiclePass.DoesNotExist:
-                pass_status = "not_found"
+                reject_reason = vehicle_pass.reject_reason if pass_status == "rejected" else None
+            except GovVehiclePass.DoesNotExist:
+                try:
+                    # ✅ If not found, check in VehiclePass
+                    vehicle_pass = VehiclePass.objects.get(vehicle_number=vehicle_number)
+                    pass_status = vehicle_pass.status
+                    reject_reason = vehicle_pass.reject_reason if pass_status == "rejected" else None
+                except VehiclePass.DoesNotExist:
+                    pass_status = "not_found"
 
         return render(request, "check_status.html", {
             "pass_status": pass_status,
             "reject_reason": reject_reason,  # ✅ Pass reject reason to template
         })
-    return redirect(login_view)
+    
+    return redirect("login_view")  # Redirect to login if not a user
 
 def issue_vehicle_pass(request):
     if request.session.get("role") == "user":
@@ -411,11 +420,16 @@ def export_gov_vehicle_passes(request):
     return response
 
 def update_pass_status(request, pass_id, status):
-    vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
+    admin_id = request.session.get("user_id")  # Get admin ID from session
 
     if status not in ["approved", "rejected"]:
         return HttpResponse("❌ Invalid Status!", status=400)
-    admin_id = request.session.get("user_id")  # Get admin ID from session
+
+    # ✅ Check in GovVehiclePass first
+    vehicle_pass = GovVehiclePass.objects.filter(id=pass_id).first()
+    if not vehicle_pass:
+        # ✅ If not found in GovVehiclePass, check in VehiclePass
+        vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
 
     # ✅ Handle Rejection with Reason
     if status == "rejected":
@@ -427,28 +441,76 @@ def update_pass_status(request, pass_id, status):
 
             vehicle_pass.status = "rejected"
             vehicle_pass.reject_reason = reject_reason
-            vehicle_pass.approved_by = admin_id  # Save rejection reason
+            vehicle_pass.approved_by = admin_id  # Save admin who rejected it
             vehicle_pass.save()
 
             messages.success(request, "❌ Vehicle Pass Rejected Successfully!")
             return redirect("admin_vehicle_passes")  # Redirect after rejection
 
-        # If GET request for rejection, show error
         messages.error(request, "❌ Invalid request method for rejection!")
         return redirect("admin_vehicle_passes")
+    
+def update_gov_pass_status(request, pass_id, status):
+    print("Session Data:", request.session.items())  # Debugging Line ✅
+    
+    if not request.session.get("user_id"):  # Check if session exists
+        messages.error(request, "⚠ Session expired! Please log in again.")
+        return redirect("login_view")
+
+    admin_id = request.session.get("user_id")
+
+    if status not in ["approved", "rejected"]:
+        return HttpResponse("❌ Invalid Status!", status=400)
+
+    vehicle_pass = GovVehiclePass.objects.filter(id=pass_id).first()
+    if not vehicle_pass:
+        vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
+
+    if status == "rejected":
+        if request.method == "POST":
+            reject_reason = request.POST.get("reject_reason", "").strip()
+            if not reject_reason:
+                messages.error(request, "❌ Please provide a reason for rejection!")
+                return redirect("approved_gov")
+
+            vehicle_pass.status = "rejected"
+            vehicle_pass.reject_reason = reject_reason
+            vehicle_pass.approved_by = admin_id
+            vehicle_pass.save()
+
+            messages.success(request, "❌ Vehicle Pass Rejected Successfully!")
+            return redirect("approved_gov")  
+
+        messages.error(request, "❌ Invalid request method for rejection!")
+        return redirect("approved_gov")
+
+    if status == "approved":
+        vehicle_pass.status = "approved"
+        vehicle_pass.reject_reason = ""
+        vehicle_pass.approved_by = admin_id
+        vehicle_pass.approved_date = now().date()
+
+        if not vehicle_pass.pass_no:
+            vehicle_pass.pass_no = vehicle_pass.generate_pass_no()
+
+        vehicle_pass.save()
+
+    return redirect("approved_gov")
+
 
     # ✅ If approved, update status
     if status == "approved":
         vehicle_pass.status = "approved"
         vehicle_pass.reject_reason = ""  # Clear rejection reason
-        vehicle_pass.approved_by = admin_id 
+        vehicle_pass.approved_by = admin_id
         vehicle_pass.approved_date = now().date()
-        if not vehicle_pass.pass_no:  # ✅ Only generate if not assigned yet
-            vehicle_pass.pass_no = vehicle_pass.generate_pass_no()   # ✅ Store Current Date
-        vehicle_pass.save()
-        # return generate_pass_image(vehicle_pass)  # Generates the pass and returns response
 
-    return redirect("admin_vehicle_passes") 
+        if not vehicle_pass.pass_no:  # ✅ Only generate if not assigned yet
+            vehicle_pass.pass_no = vehicle_pass.generate_pass_no()  
+
+        vehicle_pass.save()
+
+    return redirect("admin_vehicle_passes")
 
 def generate_pass_image(request, pass_id):
     # ✅ Get the pass record
@@ -601,6 +663,159 @@ def generate_pass_image(request, pass_id):
         response = HttpResponse(pdf_file.read(), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.vehicle_number}.pdf"'
         return response
+    
+
+def generate_gov_pass_image(request, pass_id):
+    # ✅ Get the pass record
+    vehicle_pass = get_object_or_404(GovVehiclePass, id=pass_id)
+
+    # ✅ Ensure pass is approved
+    if vehicle_pass.status != "approved":
+        return JsonResponse({"error": "Pass is not approved yet."}, status=400)
+
+    # ✅ Generate Pass Image (A5 Landscape)
+    image_size = (2480, 1748)  # A5 Size
+    img = Image.new("RGB", image_size, "white")
+    draw = ImageDraw.Draw(img)
+
+    # ✅ Load Gujarati Font
+    def load_font(font_name, size):
+        font_path = os.path.join(settings.MEDIA_ROOT, "font", font_name)
+        try:
+            return ImageFont.truetype(font_path, size)
+        except IOError:
+            return ImageFont.truetype("arial.ttf", size)
+
+    # 🔹 Use "Noto Sans Gujarati" for proper rendering
+    font_title = load_font("NotoSansGujarati-Bold.ttf", 90)  # Main Title
+    font_main_head = load_font("NotoSansGujarati-Bold.ttf", 120)  # Main Title
+    font_normal = load_font("NotoSansGujarati-Regular.ttf", 50)  # Uniform Font Size
+    font_bold = load_font("NotoSansGujarati-Bold.ttf", 50)  # Uniform Font Size
+
+    # ✅ Header Section
+    draw.text((400, 80), "જૂનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_main_head)
+    
+    # 🔹 Add a Bold Line Below the Header
+    draw.line([(100, 260), (2380, 260)], fill="black", width=6)
+
+    formatted_date = vehicle_pass.approved_date.strftime("%d-%m-%Y")
+
+    draw.text((1900, 280), f"પાસ નંબર: {vehicle_pass.pass_no}/2025", fill="black", font=font_bold)
+    draw.text((1900, 380), f"ઈશ્યુ તારીખ: {formatted_date}", fill="black", font=font_bold)
+
+    # ✅ Police Logo
+    logo_path = os.path.join(settings.MEDIA_ROOT, "junagadh_police.png")
+    if os.path.exists(logo_path):
+        police_logo = Image.open(logo_path).convert("RGBA")
+        police_logo = police_logo.resize((230, 230))
+        img.paste(police_logo, (100, 20), police_logo)
+
+    # ✅ QR Code Generation
+    qr_data = f"""
+    નામ: {vehicle_pass.name}
+    મોબાઇલ: {vehicle_pass.mobile_no}
+    વાહન નંબર: {vehicle_pass.vehicle_number}
+    વાહન પ્રકાર: {vehicle_pass.vehicle_type}
+    શરુઆત તારીખ: {vehicle_pass.start_date}
+    અંતિમ તારીખ: {vehicle_pass.end_date}
+    """
+    
+    qr = qrcode.QRCode(
+        version=5, 
+        error_correction=qrcode.constants.ERROR_CORRECT_H,  # High error correction
+        box_size=10,  # Increased for better resolution
+        border=2
+    )
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+
+    # ✅ Center Image in QR Code
+    center_img_path = os.path.join(settings.MEDIA_ROOT, "GUJARAT POLICE LOGO PNG.png")
+    if os.path.exists(center_img_path):
+        center_img = Image.open(center_img_path).convert("RGBA")
+        qr_size = qr_img.size[0]
+
+        # Reduce overlay image size to ensure proper scanning
+        center_img = center_img.resize((int(qr_size // 3), int(qr_size // 3)))  
+
+        # ✅ Paste Center Image in QR Code
+        qr_x = (qr_img.size[0] - center_img.size[0]) // 2
+        qr_y = (qr_img.size[1] - center_img.size[1]) // 2
+        qr_img.paste(center_img, (qr_x, qr_y), center_img)
+
+    # ✅ Paste QR Code on Pass
+    qr_resized = qr_img.resize((500, 500))  # Increased size to make scanning easier
+    img.paste(qr_resized, (1200, 1050))  # Adjusted position
+
+    # ✅ Function to Draw Dotted Lines
+    def draw_dotted_line(draw, start_x, start_y, end_x, dot_spacing=20, dot_length=12):
+        x = start_x
+        while x < end_x:
+            draw.line([(x, start_y), (x + dot_length, start_y)], fill="black", width=3)
+            x += dot_spacing  
+
+    # ✅ Pass Title
+    draw.text((700, 280), "સરકારી વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
+
+    # ✅ Vehicle Entry Details with Dotted Lines
+    fields = [
+        ("તારીખ:", vehicle_pass.start_date, 200, 500),
+        ("થી", "", 1000, 500),
+        ("તારીખ:", vehicle_pass.end_date, 1200, 500),
+        ("વાહન નંબર:", vehicle_pass.vehicle_number, 200, 650),
+        ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1200, 650),
+        ("નામ:", vehicle_pass.name, 200, 800),
+        ("મોબાઇલ નંબર:", vehicle_pass.mobile_no, 1200, 800),
+        ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 200, 950),
+        (f"{vehicle_pass.travel_reason} નું નામ:", vehicle_pass.travel_reason, 1200, 950),
+    ]
+
+    for label, value, x, y in fields:
+        draw.text((x, y), label, fill="black", font=font_bold)  # Bold Label
+        draw.text((x + 400, y), f"{value}", fill="black", font=font_normal)  # Normal Value
+        draw_dotted_line(draw, x, y + 60, x + 800)  # Dotted Line
+
+    # ✅ Police Officer Signature Section
+    draw.text((1950, 1400), "પોલીસ અધિક્ષક", fill="black", font=font_bold)
+    draw.text((2000, 1460), "જૂનાગઢ વતી,", fill="black", font=font_bold)
+
+    # ✅ Rules Section with Bullet Points
+    draw.line([(50, 1550), (2430, 1550)], fill="black", width=4)
+    draw.text((100, 1600), "• પાસનું ડુપ્લીકેશન કે કલર ફોટોકોપી કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_bold)
+    draw.text((100, 1660), "• ફરજ પરના પોલીસ કર્મચારીના વાસ્તવિક હુકમને આધિન રહેવું ફરજિયાત છે.", fill="black", font=font_bold)
+
+    # ✅ Save Image
+    vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
+    os.makedirs(vehicle_pass_folder, exist_ok=True)
+    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.vehicle_number}.png')
+    img.save(image_path)
+
+    # ✅ Ask user for position choice (frontend should send this choice in request)
+    position = request.GET.get("position", "top")  # Default to "top" if not provided
+
+    # ✅ Create A4 Portrait PDF and place A5 pass image inside it
+    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.vehicle_number}.pdf")
+    pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
+
+    # ✅ Set image position based on user choice
+    if position == "top":
+        pdf_canvas.drawImage(ImageReader(image_path), 0, 420, width=595, height=420)  # Top Half
+    elif position == "bottom":
+        pdf_canvas.drawImage(ImageReader(image_path), 0, 0, width=595, height=420)  # Bottom Half
+    else:
+        return JsonResponse({"error": "Invalid position. Use 'top' or 'bottom'."}, status=400)
+
+    # ✅ Save PDF
+    pdf_canvas.showPage()
+    pdf_canvas.save()
+
+    # ✅ Return PDF Response
+    with open(pdf_path, "rb") as pdf_file:
+        response = HttpResponse(pdf_file.read(), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.vehicle_number}.pdf"'
+        return response
 
 def download_images(request, pass_id):
     # ✅ Get the vehicle pass record
@@ -608,6 +823,39 @@ def download_images(request, pass_id):
 
     # ✅ Get all images associated with the pass
     image_fields = ['aadhaar_front', 'aadhaar_back', 'rc_book', 'license_photo']
+    image_paths = [getattr(vehicle_pass, field).path for field in image_fields if getattr(vehicle_pass, field)]
+
+    if not image_paths:
+        return HttpResponse("No images available for this pass.", content_type="text/plain")
+
+    # ✅ Define ZIP file name (use vehicle number)
+    zip_filename = f"{vehicle_pass.vehicle_number}.zip"
+    zip_filepath = os.path.join(settings.MEDIA_ROOT, "temp_zips", zip_filename)
+
+    # ✅ Ensure temp_zips folder exists
+    os.makedirs(os.path.dirname(zip_filepath), exist_ok=True)
+
+    # ✅ Create a ZIP file and add images
+    with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for image_path in image_paths:
+            zip_file.write(image_path, os.path.basename(image_path))  # Save inside ZIP
+
+    # ✅ Serve the ZIP file for download
+    with open(zip_filepath, 'rb') as zip_file:
+        response = HttpResponse(zip_file.read(), content_type="application/zip")
+        response['Content-Disposition'] = f'attachment; filename="{zip_filename}"'
+    
+    # ✅ Delete the ZIP after serving (optional for cleanup)
+    os.remove(zip_filepath)
+
+    return response
+
+def download_gov_images(request, pass_id):
+    # ✅ Get the vehicle pass record
+    vehicle_pass = get_object_or_404(GovVehiclePass, id=pass_id)
+
+    # ✅ Get all images associated with the pass
+    image_fields = ['photo1']
     image_paths = [getattr(vehicle_pass, field).path for field in image_fields if getattr(vehicle_pass, field)]
 
     if not image_paths:

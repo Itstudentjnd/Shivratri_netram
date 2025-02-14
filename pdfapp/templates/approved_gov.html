@@ -95,7 +95,7 @@
                     <!-- ✅ Buttons -->
                     <div class="mt-4 flex flex-wrap gap-2">
                         <!-- ✔ Approve -->
-                        <a href="{% url 'update_pass_status' pass.id 'approved' %}"
+                        <a href="{% url 'update_gov_pass_status' pass.id 'approved' %}"
                         class="bg-green-500 text-white px-3 py-2 rounded-md text-sm hover:bg-green-600 transition">
                             ✔ Approve
                         </a>
@@ -108,14 +108,14 @@
                         </button>
     
                         <!-- 📥 Download Pass -->
-                        <a href="{% url 'generate_pass_image' pass.id %}" 
+                        <a href="{% url 'generate_gov_pass_image' pass.id %}" 
                             class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
                             📥 Download Pass
                         </a>
     
                         <!-- 📸 Download Images -->
                         
-                        <a href="{% url 'download_images' pass.id %}" 
+                        <a href="{% url 'download_gov_images' pass.id %}" 
                             class="bg-purple-500 text-white px-3 py-2 rounded-md text-sm hover:bg-purple-600 transition">
                             📸 Download Images
                         </a>
@@ -166,7 +166,7 @@
     function openRejectModal(passId) {
         document.getElementById("rejectModal").style.display = "flex";
         document.getElementById("pass_id").value = passId;
-        document.getElementById("rejectForm").action = `/update-pass-status/${passId}/rejected/`; // ✅ Fixed String Formatting
+        document.getElementById("rejectForm").action = `/update-gov-pass-status/${passId}/rejected/`; // ✅ Fixed String Formatting
     }
     
     function closeRejectModal() {

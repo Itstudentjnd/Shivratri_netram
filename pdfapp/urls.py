@@ -12,7 +12,9 @@ urlpatterns = [
     path('issue-vehicle-pass/', views.issue_vehicle_pass, name='issue_vehicle_pass'),
     path('admin-vehicle-passes/', views.admin_vehicle_passes, name='admin_vehicle_passes'),
     path('update-pass-status/<int:pass_id>/<str:status>/', views.update_pass_status, name='update_pass_status'),
+    path('update-gov-pass-status/<int:pass_id>/<str:status>/', views.update_gov_pass_status, name='update_gov_pass_status'),
     path("generate_pass_image/<int:pass_id>/", views.generate_pass_image, name="generate_pass_image"),
+    path("generate_gov_pass_image/<int:pass_id>/", views.generate_gov_pass_image, name="generate_gov_pass_image"),
     # path('press-pass-form/', views.press_pass_form, name='press_pass_form'),
     # path('issue-press-pass/', views.issue_press_pass, name='issue_press_pass'),
     # path('update-status/<int:record_id>/<str:action>/', views.update_status, name='update_status'),
@@ -23,6 +25,7 @@ urlpatterns = [
     path('export_gov_vehicle_passes/', views.export_gov_vehicle_passes, name='export_gov_vehicle_passes'),  # ✅ New export URL
     path('generate-pass/<int:pass_id>/', views.generate_pass_image, name='generate_pass_image'),
     path('download-images/<int:pass_id>/', views.download_images, name='download_images'),
+    path('download-gov-images/<int:pass_id>/', views.download_gov_images, name='download_gov_images'),
     path('approved_gov/', views.approved_gov, name='approved_gov'),
     path('approved_private/', views.approved_private, name='approved_private'),
     

@@ -12,6 +12,9 @@
 
     <!-- ✅ Desktop Navigation (Hidden on Small Screens) -->
     <nav class="hidden md:flex space-x-6">
+        <a href="{% url 'issue_vehicle_pass' %}" class="text-xl lg:text-2xl hover:text-gray-700 transition">
+            Generate Pass
+         </a>
         <a href="{% url 'approved_private' %}" class="text-xl lg:text-2xl hover:text-gray-700 transition">
             Check Data
          </a>
@@ -30,6 +33,9 @@
     <!-- ✅ Mobile Navigation Menu (Hidden by Default) -->
 <div id="mobile-menu" 
 class="hidden absolute top-full right-4 bg-white text-black w-64 shadow-lg rounded-lg p-4 flex flex-col space-y-4 md:hidden">
+<a href="{% url 'issue_vehicle_pass' %}" class="text-xl text-gray-900 font-semibold hover:text-red-600 transition">
+    Generate Pass
+ </a>
 <a href="{% url 'approved_private' %}" class="text-xl text-gray-900 font-semibold hover:text-red-600 transition">
     check Data
  </a>
