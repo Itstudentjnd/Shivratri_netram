@@ -378,7 +378,7 @@ def generate_pass_image(request, pass_id):
 
     # ✅ Rules Section with Perfect Spacing
     draw.line([(50, 1550), (2430, 1550)], fill="black", width=4)
-    draw.text((100, 1600), "• પાસનું ડુપ્લીકેશન કે કલર ઝેરોક્સ કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_text)
+    draw.text((100, 1600), "• પાસનું ડુપ્લીકેશન કે કલર ફોટોકોપી કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_text)
     draw.text((100, 1660), "• ફરજ પરના પોલીસ કર્મચારીના વાસ્તવિક હુકમને આધિન રહેવું ફરજિયાત છે.", fill="black", font=font_text)
 
 
