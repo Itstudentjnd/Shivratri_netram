@@ -69,6 +69,9 @@
                     <p class="text-gray-500 text-sm"><strong>Approved At:</strong> {{ pass.approved_date }}</p>
                     <p class="text-gray-500 text-sm"><strong>Approved by:</strong> {{ pass.approved_by_name }}</p>
     
+                    {% if pass.pass_no %}
+                    <p class="text-gray-500 text-sm"><strong>Pass Number:</strong> {{ pass.pass_no }}</p>
+                    {% endif %}
                     <!-- 📝 Rejection Reason -->
                     {% if pass.status == "rejected" %}
                         <p class="text-red-600 font-bold">🚫 Rejected: {{ pass.reject_reason }}</p>

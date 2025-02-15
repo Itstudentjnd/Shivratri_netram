@@ -114,7 +114,6 @@ def check_pass_status(request):
 def issue_vehicle_pass(request):
     if request.session.get("role") == "user":
         if request.method == "POST":
-            # 🚗 Construct Vehicle Number
             vehicle_number = (
                 request.POST.get("state_code", "").upper()
                 + request.POST.get("city_code", "")
@@ -122,57 +121,49 @@ def issue_vehicle_pass(request):
                 + request.POST.get("digits", "")
             )
 
-            # 🚨 Check for Duplicate Vehicle Number
             if VehiclePass.objects.filter(vehicle_number=vehicle_number).exists():
                 messages.error(request, f"🚨 આ વાહન નંબર ({vehicle_number}) માટે પહેલેથી જ અરજી થઈ ચૂકી છે!")
                 return redirect("issue_vehicle_pass")
 
-            # 📝 Process Form Data
             form = VehiclePassForm(request.POST, request.FILES)
-            
             if form.is_valid():
                 vehicle_pass = form.save(commit=False)
                 vehicle_pass.vehicle_number = vehicle_number
                 vehicle_pass.mobile_no = request.POST.get("mobile_no", "")
 
-                # 📂 Handle File Uploads
                 vehicle_pass.aadhaar_front = request.FILES.get("aadhaar_front")
                 vehicle_pass.aadhaar_back = request.FILES.get("aadhaar_back")
                 vehicle_pass.rc_book = request.FILES.get("rc_book")
                 vehicle_pass.license_photo = request.FILES.get("license_photo")
 
-                # 📌 Travel Reason Handling
                 travel_reason = request.POST.get("travel_reason", "").strip()
                 extra_name = request.POST.get("extra_name", "").strip()
                 extra_place = request.POST.get("extra_place", "").strip()
                 other_reason = request.POST.get("other_reason", "").strip()
 
-                # 🛠 Fix: Ensure 'Other Reason' is not empty if selected
-                if travel_reason == "અન્ય":  # ✅ Gujarati value match
+                if travel_reason == "અન્ય":
                     if not other_reason:
                         messages.error(request, "❌ જો તમે 'અન્ય' પસંદ કરો છે, તો કૃપા કરીને કારણ દાખલ કરો!")
                         return redirect("issue_vehicle_pass")
-                    final_reason = other_reason
-                    extra_name, extra_place = "", ""  # 🔥 Clear extra fields for 'Other' selection
+                    vehicle_pass.travel_reason = "અન્ય"
+                    vehicle_pass.other_reason = other_reason  # ✅ Store "Other" reason
+                    vehicle_pass.extra_name = ""
+                    vehicle_pass.extra_place = ""
                 else:
-                    final_reason = travel_reason
-                vehicle_pass.travel_reason = final_reason
-                vehicle_pass.extra_name = extra_name
-                vehicle_pass.extra_place = extra_place
+                    vehicle_pass.travel_reason = travel_reason
+                    vehicle_pass.other_reason = ""  # ✅ Clear other_reason if not used
+                    vehicle_pass.extra_name = extra_name
+                    vehicle_pass.extra_place = extra_place
 
-                # 🚀 Set Status & Date
                 vehicle_pass.status = "pending"
                 vehicle_pass.applied_at = timezone.now()
-
                 vehicle_pass.save()
 
-                # ✅ Format Date & Time for Display
-                formatted_datetime = vehicle_pass.applied_at.strftime("%d-%m-%Y %I:%M %p")
-                messages.success(request, f"✅ વાહન પાસ પર સફળતાપૂર્વક સબમિટ થય ગયેલ છે! જાણકારી માટે સાઇટ ચકાસતા રહો.")
+                messages.success(request, f"✅ વાહન પાસ પર સફળતાપૂર્વક સબમિટ થય ગયેલ છે!")
                 return redirect("issue_vehicle_pass")
 
             else:
-                print(form.errors)  # 🐞 Debugging step: Print form errors in console
+                print(form.errors)
                 messages.error(request, "❌ કૃપા કરીને બધી વિગતો સાચી રીતે ભરો.")
 
         else:
@@ -180,6 +171,7 @@ def issue_vehicle_pass(request):
 
         return render(request, "issue_vehicle_pass.html", {"form": form})
     return redirect(login_view)
+
 
 
 def issue_gov_vehicle_pass(request):
@@ -295,22 +287,36 @@ def approved_gov(request):
 
 def approved_private(request):
     if request.session.get("role") == "user":
-        # 🔹 Fetch records from both tables
+        selected_date = request.GET.get("approved_date", "").strip()
+        
+        vehicle_passes = VehiclePass.objects.filter(status="approved")
+        total_requests = vehicle_passes.count()  # 🔹 Total Approved Passes (All Time)
+        filtered_count = 0  # 🔹 Count of Approvals for Selected Date
+        
+        if selected_date:
+            try:
+                selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+                vehicle_passes = vehicle_passes.filter(approved_date=selected_date)
+                filtered_count = vehicle_passes.count()  # ✅ Count of Approved Passes for Selected Date
+            except ValueError:
+                selected_date = ""
 
-        vehicle_passes = VehiclePass.objects.all()
-
-        # 🔹 Merge both querysets & order by latest entry
-        passes =  vehicle_passes
-
-        total_requests = len(passes)  # Total vehicle pass requests
-
-        # 🔹 Get user details for approval tracking
-        for pass_obj in passes:
-            if pass_obj.approved_by:  # If approved/rejected by someone
+        # 🔹 Add Approved By Name
+        for pass_obj in vehicle_passes:
+            if pass_obj.approved_by:
                 user = User.objects.filter(id=pass_obj.approved_by).first()
                 pass_obj.approved_by_name = user.name if user else "Unknown"
 
-        return render(request, 'approved_private.html', {'passes': passes, 'total_requests': total_requests})
+        return render(
+            request,
+            "approved_private.html",
+            {
+                "passes": vehicle_passes,
+                "total_requests": total_requests,  # ✅ Total Approved Passes (All Time)
+                "filtered_count": filtered_count,  # ✅ Approved Passes for Selected Date
+                "selected_date": selected_date,
+            },
+        )
 
     return redirect(login_view)
 
@@ -687,7 +693,74 @@ def generate_pass_image(request, pass_id):
         response = HttpResponse(pdf_file.read(), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.vehicle_number}.pdf"'
         return response
-    
+
+# def download_approved_passes(request):
+#     selected_date = request.GET.get("approved_date", "").strip()
+
+#     if not selected_date:
+#         return HttpResponse("❌ Please select an approval date.", status=400)
+
+#     print(f"📅 Received Date: {selected_date}")  # Debugging step
+
+#     try:
+#         # ✅ Try parsing in both common formats (YYYY-MM-DD or DD-MM-YYYY)
+#         for fmt in ["%Y-%m-%d", "%d-%m-%Y"]:
+#             try:
+#                 selected_date = datetime.strptime(selected_date, fmt).date()
+#                 print(f"✅ Parsed Date: {selected_date}")  # Debugging step
+#                 break
+#             except ValueError:
+#                 continue
+#         else:
+#             return HttpResponse("❌ Invalid date format. Use YYYY-MM-DD or DD-MM-YYYY.", status=400)
+
+#     except ValueError:
+#         return HttpResponse("❌ Invalid date format.", status=400)
+
+#     # 🔹 Fetch Only Approved Passes for Selected Date
+#     passes = VehiclePass.objects.filter(status="approved", approved_date=selected_date)
+
+
+#     if not passes.exists():
+#         return HttpResponse("❌ No approved passes found for the selected date.", status=404)
+
+#     # ✅ Ensure "generate_pass_pdf" folder exists
+#     generate_pdf_folder = os.path.join(settings.MEDIA_ROOT, "generate_pass_pdf")
+#     if not os.path.exists(generate_pdf_folder):
+#         os.makedirs(generate_pdf_folder)  # 🔥 Create the folder if it doesn't exist
+
+#     # 🔥 Step 1: Generate PDFs for Each Approved Pass
+#     for pass_obj in passes:
+#         pass_pdf_path = os.path.join(generate_pdf_folder, f"{pass_obj.vehicle_number}.pdf")
+        
+#         if not os.path.exists(pass_pdf_path):  # 🔹 Generate only if not already created
+#             generate_pass_image(pass_obj, pass_pdf_path)
+#             print(f"📄 Generated Pass PDF: {pass_pdf_path}")  # Debugging step
+
+#     # ✅ Create ZIP File Path
+#     zip_filename = f"approved_passes_{selected_date}.zip"
+#     zip_path = os.path.join(settings.MEDIA_ROOT, zip_filename)  # ✅ Store ZIP in `media/`
+
+#     # 🔥 Step 2: Create ZIP File & Add Only PDF Passes
+#     with zipfile.ZipFile(zip_path, "w") as zipf:
+#         added_files = 0  # Counter to check if any files are added
+        
+#         for pass_obj in passes:
+#             pass_pdf_path = os.path.join(generate_pdf_folder, f"{pass_obj.vehicle_number}.pdf")
+            
+#             if os.path.exists(pass_pdf_path):  # ✅ Ensure the pass PDF exists
+#                 zipf.write(pass_pdf_path, os.path.basename(pass_pdf_path))
+#                 print(f"✅ Added to ZIP: {pass_pdf_path}")  # Debugging step
+#                 added_files += 1  
+
+#     if added_files == 0:
+#         return HttpResponse("❌ No pass PDFs found for the selected date.", status=404)
+
+#     # 📥 Step 3: Serve ZIP File for Download
+#     with open(zip_path, "rb") as zip_file:
+#         response = HttpResponse(zip_file.read(), content_type="application/zip")
+#         response["Content-Disposition"] = f'attachment; filename="{zip_filename}"'
+#         return response
 
 def generate_gov_pass_image(request, pass_id):
     # ✅ Get the pass record
@@ -950,6 +1023,8 @@ def admin_download_pass_images(request, pass_id):
     os.remove(zip_filepath)
 
     return response
+
+
 # def press_pass_form(request):
 #     if request.method == "POST":
 #         name = request.POST.get('name')

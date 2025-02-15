@@ -64,6 +64,7 @@ class VehiclePass(models.Model):
     approved_by = models.IntegerField(null=True, blank=True)  # Stores Admin ID
     approved_date = models.DateField(null=True, blank=True)
     pass_no = models.IntegerField(blank=True, null=True)
+    other_reason = models.CharField(max_length=255, blank=True, null=True)  # Optional field for extra details
 
     def generate_pass_no(self):
         # ✅ Get all existing pass numbers, convert them to integers, and sort them
@@ -120,6 +121,7 @@ class GovVehiclePass(models.Model):
     approved_by = models.IntegerField(null=True, blank=True)  # Stores Admin ID
     approved_date = models.DateField(null=True, blank=True)
     pass_no = models.IntegerField(blank=True, null=True)
+    # other_reason = models.CharField(max_length=255, blank=True, null=True)  # Optional field for extra details
 
     def generate_pass_no(self):
         # ✅ Get all existing pass numbers, convert them to integers, and sort them

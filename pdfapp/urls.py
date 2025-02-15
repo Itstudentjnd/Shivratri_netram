@@ -30,6 +30,6 @@ urlpatterns = [
     path('download-gov-images/<int:pass_id>/', views.download_gov_images, name='download_gov_images'),
     path('approved_gov/', views.approved_gov, name='approved_gov'),
     path('approved_private/', views.approved_private, name='approved_private'),
-    
+    # path("download_approved_passes/", views.download_approved_passes, name="download_approved_passes"),  # ✅ Add thi
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
