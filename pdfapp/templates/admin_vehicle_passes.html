@@ -126,19 +126,34 @@
                             class="bg-red-500 text-white px-3 py-2 rounded-md text-sm hover:bg-red-600 transition">
                             ✖ Reject
                         </button>
-    
+                        
+                        {% if pass.photo1%}
+
+                        <!-- 📥 Download Pass -->
+                        <a href="{% url 'generate_gov_pass_image' pass.id %}" 
+                            class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
+                            📥 Download Pass
+                        </a>
+
+                        {% endif %}
+
+                        {% if pass.aadhaar_front or pass.aadhaar_back or pass.rc_book or pass.license_photo %}
+
                         <!-- 📥 Download Pass -->
                         <a href="{% url 'generate_pass_image' pass.id %}" 
                             class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
                             📥 Download Pass
                         </a>
+
+                        {% endif %}
     
                         <!-- 📸 Download Images -->
-                        
+                       
                         <a href="{% url 'admin_download_pass_images' pass.id %}" 
                             class="bg-purple-500 text-white px-3 py-2 rounded-md text-sm hover:bg-purple-600 transition">
                             📸 Download Images
                         </a>
+                        
                     </div>
                 </div>
             {% empty %}
