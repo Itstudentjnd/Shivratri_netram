@@ -166,7 +166,7 @@
     function openRejectModal(passId) {
         document.getElementById("rejectModal").style.display = "flex";
         document.getElementById("pass_id").value = passId;
-        document.getElementById("rejectForm").action = `/update-gov-pass-status/${passId}/rejected/`; // ✅ Fixed String Formatting
+        document.getElementById("rejectForm").action = `/update-pass-status/${passId}/rejected/`; // ✅ Fixed String Formatting
     }
     
     function closeRejectModal() {
