@@ -1,0 +1,81 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>જુનાગઢ પોલીસ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Fullscreen Background Slideshow */
+        .bg-slideshow {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            animation: slideshow 15s infinite alternate;
+            z-index: -1;
+            opacity: 0.8;
+            background-color: black;
+        }
+        
+        @keyframes slideshow {
+            0% { background-image: url('media/img1.jpeg'); }
+            50% { background-image: url('media/img3.jpeg'); }
+            100% { background-image: url('media/img1.jpeg'); }
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen flex flex-col relative">
+    <!-- Fullscreen Background -->
+    <div class="bg-slideshow"></div>
+
+    <!-- ✅ Navbar Include -->
+    {% include 'navbar.html' %}
+
+    <!-- ✅ Success/Error Messages -->
+    {% if messages %}
+        <div class="container mx-auto px-4 mt-4">
+            {% for message in messages %}
+                <div class="bg-green-100 text-green-900 p-3 text-lg sm:text-2xl md:text-3xl rounded-lg mb-4 text-center shadow-md">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- ✅ Title Section -->
+    <div class="text-center mt-6 mb-10 px-4">
+        <h1 class="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-black drop-shadow-lg">
+            મહા-શિવરાત્રી મેળો ૨૦૨૫
+        </h1>
+    </div>
+
+    <!-- ✅ Main Content -->
+    <div class="flex flex-col items-center justify-center flex-grow px-4 relative z-10 space-y-6 w-full">
+        
+        <!-- ✅ Buttons Section -->
+        <a href="{% url 'issue_vehicle_pass' %}" 
+           class="bg-yellow-500 hover:bg-yellow-600 text-black text-lg sm:text-2xl md:text-3xl font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 w-full max-w-sm text-center">
+            🚗 વાહન પાસ મેળવવા માટે અહી click કરો.
+        </a>
+        <a href="{% url 'check_status' %}" 
+           class="bg-green-500 hover:bg-green-600 text-white text-lg sm:text-2xl md:text-3xl font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 w-full max-w-sm text-center">
+            📋 વાહન પાસની સ્થિતિ ચકાસવા અહી click કરો.
+        </a>
+
+        <!-- ✅ Rules Section -->
+        <div class="bg-blue-100 text-blue-900 p-4 sm:p-6 rounded-lg mb-6 max-w-3xl w-full shadow-md">
+            <p class="font-semibold text-xl sm:text-2xl md:text-3xl mb-3">📌 વાહન પાસ માટેના નિયમો:</p>
+            <ul class="list-disc ml-5 text-sm sm:text-lg md:text-xl space-y-2">
+                <li>Aadhar Card ની બન્ને બાજુના <strong>Clear Photo</strong> અપલોડ કરવાના રહેશે.</li>
+                <li>RC Book નો <strong>Clear Photo</strong> અપલોડ કરવાના રહેશે.</li>
+                <li>Driving License નો <strong>Clear Photo</strong> અપલોડ કરવાના રહેશે.</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,288 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>જુનાગઢ પોલીસ</title> 
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-900 to-blue-700 text-white min-h-screen flex flex-col">
+
+    <!-- ✅ Navbar -->
+    {% include 'navbar.html' %}
+
+    <div class="flex flex-col items-center justify-center flex-grow px-4 mt-5">
+        <div class="bg-white text-black rounded-lg shadow-lg p-5 sm:p-6 max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-3xl w-full">
+            <h2 class="text-center text-2xl font-bold text-blue-900 mb-4">🚗 વાહન પાસ મેળવવાની અરજી</h2>
+
+            <!-- ✅ Display Success/Error Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="bg-green-100 text-green-900 text-lg p-3 rounded-lg mb-4">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <!-- ✅ Responsive Grid Layout -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                    <!-- Start Date -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold">📅 પ્રારંભ તારીખ</label>
+                        <input type="date" name="start_date" min="2025-02-22" max="2025-02-22" value="2025-02-22"
+                               class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+
+                    <!-- End Date -->
+                    <div>
+                        <label class="block text-gray-700 font-semibold">📅 અંતિમ તારીખ</label>
+                        <input type="date" name="end_date" min="2025-02-26" max="2025-02-26" value="2025-02-26"
+                               class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" required>
+                    </div>
+
+                </div>
+
+                <!-- ✅ Vehicle Number -->
+                <div>
+                    <label class="block text-gray-700 font-semibold">🚗 વાહન નંબર</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <input type="text" name="state_code" id="state_code" maxlength="2" placeholder="GJ"
+                               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required oninput="moveToNext(this, 'city_code')" onkeydown="moveToPrev(event, this, null)">
+                               
+                        <input type="text" name="city_code" id="city_code" maxlength="2" placeholder="01"
+                               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required oninput="moveToNext(this, 'series')" onkeydown="moveToPrev(event, this, 'state_code')">
+                               
+                        <input type="text" name="series" id="series" maxlength="2" placeholder="AA"
+                               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required oninput="moveToNext(this, 'digits')" onkeydown="moveToPrev(event, this, 'city_code')">
+                               
+                        <input type="text" name="digits" id="digits" maxlength="4" placeholder="1234"
+                               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required onkeydown="moveToPrev(event, this, 'series')">
+                    </div>
+                </div>
+
+                <!-- ✅ Vehicle Type -->
+                <div class="mt-4">
+                    <label class="block text-gray-700 font-semibold">🚘 વાહન પ્રકાર</label>
+                    <select name="vehicle_type" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" required>
+                        <option value="" selected disabled>વાહન પસંદ કરો</option>
+                        <option value="2-wheel">2-Wheel</option>
+                        <option value="3-wheel">3-Wheel</option>
+                        <option value="4-wheel">4-Wheel</option>
+                        <option value="heavy-vehicle">Heavy Vehicle</option>
+                    </select>
+                </div>
+
+                <!-- ✅ Mobile Number Input -->
+                <div class="mt-4">
+                    <label class="block text-gray-700 font-semibold">📞 તમારો મોબાઈલ નંબર</label>
+                    <div class="grid grid-cols-10 gap-1">
+                        {% for i in "0123456789" %}
+                            <input type="text" name="mobile_digit" maxlength="1" pattern="[0-9]"
+                                   placeholder="*" required 
+                                   class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 mobile-input text-sm sm:text-base">
+                        {% endfor %}
+                    </div>
+                    <input type="hidden" name="mobile_no" id="mobile_no">
+                </div>
+
+                <!-- ✅ Name Input -->
+                <div class="mt-4">
+                    <label class="block text-gray-700 font-semibold">👤 નામ</label>
+                    <input type="text" name="name" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" required>
+                </div>
+
+                
+                <!-- ✅ Travel Reason -->
+                <div class="mt-4">
+                    <label class="block text-left text-gray-700 font-semibold">✍️ વાહન પાસ મેળવવાનું કારણ</label>
+                    <select name="travel_reason" id="travel_reason"
+                        class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="" selected disabled>કારણ પસંદ કરો</option>
+                        <option value="અન્નક્ષેત્ર" data-place="અન્નક્ષેત્રનું સરનામું">અન્નક્ષેત્ર માટે</option>
+                        <option value="આશ્રમ/મંદીર " data-place="આશ્રમ/મંદીરનું સરનામું">આશ્રમ સેવા / પૂજા</option>
+                        <option value="વેપાર / રોજગાર " data-place="વેપાર / રોજગારનું સરનામું">વેપાર / રોજગાર માટે</option>
+                        <option value="ધર્મશાળા " data-place="ધર્મશાળા સરનામું">ધર્મશાળા માટે</option>
+
+                        <option value="અન્ય">અન્ય</option>
+                    </select>
+                </div>
+                
+                <!-- Name & Place Fields (Initially Hidden) -->
+                <div id="extra_fields" class="hidden">
+                    <div class="mb-4">
+                        <label id="selected_reason_label" class="block text-left text-gray-700 font-semibold">👤 નામ</label>
+                        <input type="text" id="extra_name" name="extra_name"
+                            class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black" required>
+                    </div>
+                    <div class="mb-4">
+                        <label id="selected_place_label" class="block text-left text-gray-700 font-semibold">📍 સ્થળ</label>
+                        <input type="text" id="extra_place" name="extra_place"
+                            class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black" required>
+                    </div>
+                </div>
+                
+                <!-- Other Reason Input (Initially Hidden) -->
+                <div id="other_reason_field" class="hidden">
+                    <label class="block text-left text-gray-700 font-semibold">✍️ અન્ય કારણ</label>
+                    <textarea name="other_reason" id="other_reason"
+                        class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows="3"></textarea>
+                </div>
+
+                <!-- ✅ File Uploads -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block text-gray-700 font-semibold">📸 આધાર કાર્ડ (આગળ)</label>
+                        <input type="file" name="aadhaar_front" accept="image/*"
+                               class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold">📸 આધાર કાર્ડ (પાછળ)</label>
+                        <input type="file" name="aadhaar_back" accept="image/*"
+                               class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold">📄 આર.સી. બુક</label>
+                        <input type="file" name="rc_book" accept="image/*"
+                               class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-semibold">🚗 ડ્રાઇવિંગ લાયસન્સ</label>
+                        <input type="file" name="license_photo" accept="image/*"
+                               class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+
+                <!-- ✅ Submit Button -->
+                <button type="submit"
+                        class="w-full bg-blue-900 text-white py-2 rounded-md hover:bg-blue-700 transition mt-4">
+                    🔄 સબમીટ કરો
+                </button>
+
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function moveToNext(current, nextFieldId) {
+            if (current.value.length === current.maxLength) {
+                document.getElementById(nextFieldId)?.focus();
+            }
+        }
+    
+        function moveToPrev(event, current, prevFieldId) {
+            if (event.key === "Backspace" && current.value.length === 0 && prevFieldId) {
+                document.getElementById(prevFieldId)?.focus();
+            }
+        }
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const inputs = document.querySelectorAll(".mobile-input");
+            const hiddenInput = document.getElementById("mobile_no");
+    
+            inputs.forEach((input, index) => {
+                input.addEventListener("input", function() {
+                    if (this.value.length === 1 && index < inputs.length - 1) {
+                        inputs[index + 1].focus();
+                    }
+                    updateHiddenInput();
+                });
+    
+                input.addEventListener("keydown", function(event) {
+                    if (event.key === "Backspace" && this.value.length === 0 && index > 0) {
+                        inputs[index - 1].focus();
+                    }
+                });
+            });
+    
+            function updateHiddenInput() {
+                hiddenInput.value = Array.from(inputs).map(i => i.value).join("");
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const startDateInput = document.getElementById("start_date");
+            const endDateInput = document.getElementById("end_date");
+    
+            startDateInput.addEventListener("change", function () {
+                let selectedDate = new Date(this.value);
+                let minEndDate = new Date(selectedDate);
+                minEndDate.setDate(minEndDate.getDate());
+    
+                // Ensure end date is not before start date
+                if (endDateInput.value && new Date(endDateInput.value) < minEndDate) {
+                    endDateInput.value = this.value;
+                }
+            });
+    
+            // Prevent manual date input outside allowed range
+            startDateInput.addEventListener("input", function () {
+                if (this.value < "2025-02-22" ) {
+                    this.value = "2025-02-22";
+                }
+            });
+    
+            endDateInput.addEventListener("input", function () {
+                if (this.value <this.value > "2025-02-26") {
+                    this.value = "2025-02-26";
+                }
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const reasonSelect = document.getElementById("travel_reason");
+            const extraFields = document.getElementById("extra_fields");
+            const selectedReasonLabel = document.getElementById("selected_reason_label");
+            const selectedPlaceLabel = document.getElementById("selected_place_label");
+            const extraName = document.getElementById("extra_name");
+            const extraPlace = document.getElementById("extra_place");
+            const otherReasonField = document.getElementById("other_reason_field");
+            const otherReasonInput = document.getElementById("other_reason");
+        
+            reasonSelect.addEventListener("change", function () {
+                let selectedOption = reasonSelect.options[reasonSelect.selectedIndex];
+        
+                if (reasonSelect.value === "અન્ય") {
+                    // ⏩ Other Reason Selected → Show Textarea, Hide Name & Place Fields
+                    otherReasonField.classList.remove("hidden");
+                    extraFields.classList.add("hidden");
+                    otherReasonInput.setAttribute("required", "true");
+                } else {
+                    // ✅ Selected Reason → Update Labels & Show Name & Place Fields
+                    let reasonText = selectedOption.value;
+                    let placeText = selectedOption.getAttribute("data-place") || "સ્થળ";
+        
+                    selectedReasonLabel.innerHTML = `👤 ${reasonText} નામ`;
+                    selectedPlaceLabel.innerHTML = `📍 ${placeText}`;
+        
+                    {% comment %} extraName.value = reasonText;
+                    extraPlace.value = placeText; {% endcomment %}
+        
+                    extraFields.classList.remove("hidden");
+                    otherReasonField.classList.add("hidden");
+                    otherReasonInput.removeAttribute("required");
+                }
+            });
+        });
+        
+</script>
+
+</body>
+</html>

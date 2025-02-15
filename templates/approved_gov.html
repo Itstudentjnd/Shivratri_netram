@@ -1,0 +1,179 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>જુનાગઢ પોલીસ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-900 to-blue-700 text-white min-h-screen flex flex-col">
+
+    <!-- ✅ Navbar Include -->
+    {% include 'navbar1.html' %}
+
+    <div class="container mx-auto p-4 md:p-6 mt-16">
+        <h2 class="text-2xl md:text-3xl font-bold text-center mb-6">
+            🚔 Goverment Vehicle Pass Requests (Total: <span id="totalRequests">{{ total_requests }}</span>)
+        </h2>
+
+        <div class="flex justify-end mb-4">
+            <a href="{% url 'export_gov_vehicle_passes' %}" 
+                class="bg-green-600 text-white m-2 font-semibold px-4 py-2 rounded-md text-sm md:text-base hover:bg-green-700 transition shadow-md flex items-center gap-2">
+                📊 Download Goverment Vehicle Data Excel
+            </a>
+        </div>
+        
+    
+        <!-- ✅ Success Message -->
+        {% if messages %}
+            <div class="bg-green-600 text-white p-3 rounded-md mb-4 text-sm md:text-base">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %}
+    
+        <!-- ✅ Search & Filter Section -->
+        <div class="flex flex-wrap justify-between items-center gap-2 md:gap-4 mb-4">
+            <!-- 🔍 Search by Vehicle Number -->
+            <input type="text" id="searchInput" onkeyup="filterCards()" placeholder="🔍 વહીકલ નંબર અને મોબાઈલ નંબર થી શોધો..."
+                class="w-full md:w-1/3 p-2 text-black border rounded-md text-sm md:text-base focus:ring-2 focus:ring-blue-500">
+    
+            <!-- 🔽 Filter by Status -->
+            <select id="statusFilter" onchange="filterCards()"
+                class="w-full md:w-1/4 p-2 text-black border rounded-md text-sm md:text-base focus:ring-2 focus:ring-blue-500">
+                <option value="">📌 **All Statuses**</option>
+                <option value="approved">✔ Approved</option>
+                <option value="rejected">✖ Rejected</option>
+                <option value="pending">⏳ Pending</option>
+            </select>
+        </div>
+    
+        <!-- ✅ Card Container -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for pass in passes %}
+                <div class="bg-white shadow-lg rounded-lg p-4 text-black card" data-status="{{ pass.status }}" data-vehicle="{{ pass.vehicle_number }}" data-mobile="{{ pass.mobile_no }}">
+                    <!-- 🚗 Vehicle & Applicant Details -->
+                    <h3 class="text-lg font-bold text-blue-900">{{ pass.vehicle_number }}</h3>
+                    <p class="text-gray-600"><strong>Applicant:</strong> {{ pass.name }}</p>
+                    <p class="text-gray-600"><strong>Mobile:</strong> {{ pass.mobile_no }}</p>
+                    <p class="text-gray-600"><strong>Type:</strong> {{ pass.vehicle_type }}</p>
+                    <p class="text-gray-600"><strong>Reason:</strong> {{ pass.travel_reason }}</p>
+                    <p class="text-gray-600"><strong>Extra Name:</strong> {{ pass.extra_name }}</p>
+    
+                    <!-- 🗓 Dates -->
+                    <p class="text-gray-500 text-sm"><strong>Start:</strong> {{ pass.start_date }}</p>
+                    <p class="text-gray-500 text-sm"><strong>End:</strong> {{ pass.end_date }}</p>
+                    <p class="text-gray-500 text-sm"><strong>Applied At:</strong> {{ pass.applied_at|date:"d-m-Y" }}</p>
+                    <p class="text-gray-500 text-sm"><strong>Approved At:</strong> {{ pass.approved_date }}</p>
+                    <p class="text-gray-500 text-sm"><strong>Approved by:</strong> {{ pass.approved_by_name }}</p>
+    
+                    <!-- 📝 Rejection Reason -->
+                    {% if pass.status == "rejected" %}
+                        <p class="text-red-600 font-bold">🚫 Rejected: {{ pass.reject_reason }}</p>
+                    {% endif %}
+    
+                    <!-- 📄 Documents -->
+                    <div class="mt-2">
+                        {% if pass.photo1 %}
+                            <a href="{{ pass.photo1.url }}" target="_blank" class="text-blue-600 text-xs">Gov Letter</a> |
+                        {% endif %}
+                    </div>
+    
+                    <!-- 🚦 Status -->
+                    <p class="mt-2 font-semibold">
+                        {% if pass.status == "approved" %}
+                            <span class="text-green-600">✔ Approved</span>
+                        {% elif pass.status == "rejected" %}
+                            <span class="text-red-600">✖ Rejected</span>
+                        {% else %}
+                            <span class="text-yellow-600">⏳ Pending</span>
+                        {% endif %}
+                    </p>
+    
+                    <!-- ✅ Buttons -->
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <!-- ✔ Approve -->
+                        <a href="{% url 'update_pass_status' pass.id 'approved' %}"
+                        class="bg-green-500 text-white px-3 py-2 rounded-md text-sm hover:bg-green-600 transition">
+                            ✔ Approve
+                        </a>
+
+    
+                        <!-- ✖ Reject -->
+                        <button onclick="openRejectModal('{{ pass.id }}')" 
+                            class="bg-red-500 text-white px-3 py-2 rounded-md text-sm hover:bg-red-600 transition">
+                            ✖ Reject
+                        </button>
+    
+                        <!-- 📥 Download Pass -->
+                        <a href="{% url 'generate_gov_pass_image' pass.id %}" 
+                            class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
+                            📥 Download Pass
+                        </a>
+    
+                        <!-- 📸 Download Images -->
+                        
+                        <a href="{% url 'download_gov_images' pass.id %}" 
+                            class="bg-purple-500 text-white px-3 py-2 rounded-md text-sm hover:bg-purple-600 transition">
+                            📸 Download Images
+                        </a>
+                    </div>
+                </div>
+            {% empty %}
+                <p class="text-center text-gray-600 col-span-3">🚫 **કોઈ પાસ રિકવેસ્ટ નથી**</p>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Reject Modal -->
+<div id="rejectModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg text-center max-w-md">
+        <h2 class="text-xl font-bold text-red-600">Reject Pass</h2>
+        <p class="text-black-600 mb-3">Enter reason for rejection:</p>
+        <form id="rejectForm" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="pass_id" id="pass_id">
+            <textarea name="reject_reason" id="reject_reason" required class="w-full p-2 border rounded-md text-black" placeholder="Enter rejection reason..."></textarea>
+            <div class="mt-4">
+                <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md">Submit</button>
+                <button type="button" onclick="closeRejectModal()" class="bg-gray-500 text-white px-4 py-2 rounded-md">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    function filterCards() {
+        let searchValue = document.getElementById("searchInput").value.toLowerCase();
+        let filterStatus = document.getElementById("statusFilter").value.toLowerCase();
+        let cards = document.querySelectorAll(".card");
+    
+        cards.forEach(card => {
+            let vehicleNumber = card.getAttribute("data-vehicle").toLowerCase();
+            let mobileNumber = card.getAttribute("data-mobile").toLowerCase();
+            let status = card.getAttribute("data-status").toLowerCase();
+    
+            let matchesSearch = vehicleNumber.includes(searchValue) || mobileNumber.includes(searchValue);
+            let matchesStatus = filterStatus === "" || status === filterStatus;
+    
+            card.style.display = (matchesSearch && matchesStatus) ? "block" : "none";
+        });
+    }
+    
+</script>
+<script>
+    function openRejectModal(passId) {
+        document.getElementById("rejectModal").style.display = "flex";
+        document.getElementById("pass_id").value = passId;
+        document.getElementById("rejectForm").action = `/update-pass-status/${passId}/rejected/`; // ✅ Fixed String Formatting
+    }
+    
+    function closeRejectModal() {
+        document.getElementById("rejectModal").style.display = "none";
+    }
+    
+    </script>
+
+</body>
+</html>
