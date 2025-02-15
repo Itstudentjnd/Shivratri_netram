@@ -1213,5 +1213,5 @@ def update_gov_vehicle_pass(request, pass_id):
         else:
             form = GovVehiclePassUpdateForm(instance=vehicle_pass)
 
-        return render(request, "update_Gov_vehicle_pass.html", {"form": form, "vehicle_pass": vehicle_pass})
+        return render(request, "update_gov_vehicle_pass.html", {"form": form, "vehicle_pass": vehicle_pass})
     return redirect(login_view)
