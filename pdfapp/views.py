@@ -654,7 +654,7 @@ def generate_pass_image(request, pass_id):
         ("નામ:", vehicle_pass.name, 200, 800),
         ("મોબાઇલ નંબર:", vehicle_pass.mobile_no, 1200, 800),
         ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 200, 950),
-        (f"{vehicle_pass.travel_reason} નું નામ:", vehicle_pass.extra_name, 1200, 950),
+        (f"{vehicle_pass.travel_reason} નું નામ:", vehicle_pass.other_reason, 1200, 950),
     ]
 
     for label, value, x, y in fields:
