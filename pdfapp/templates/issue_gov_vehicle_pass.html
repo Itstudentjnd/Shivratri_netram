@@ -34,12 +34,12 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 font-semibold">📅 પ્રારંભ તારીખ</label>
-                        <input type="date" name="start_date" min="2025-02-22" max="2025-02-26"
+                        <input type="date" name="start_date" min="2025-02-22" max="2025-02-22" value="2025-02-22"
                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 font-semibold">📅 અંતિમ તારીખ</label>
-                        <input type="date" name="end_date" min="2025-02-22" max="2025-02-26"
+                        <input type="date" name="end_date" min="2025-02-26" max="2025-02-26" value="2025-02-26"
                                class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" required>
                     </div>
                 </div>
@@ -48,14 +48,21 @@
                 <div>
                     <label class="block text-gray-700 font-semibold">🚗 વાહન નંબર</label>
                     <div class="grid grid-cols-4 gap-2">
-                        <input type="text" name="state_code" maxlength="2" placeholder="GJ"
-                               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" required>
-                        <input type="text" name="city_code" maxlength="2" placeholder="01"
-                               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" required>
-                        <input type="text" name="series" maxlength="2" placeholder="AA"
-                               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" required>
-                        <input type="text" name="digits" maxlength="4" placeholder="1234"
-                               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" required>
+                        <input type="text" name="state_code" id="state_code" maxlength="2" placeholder="GJ"
+                               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required onkeyup="moveToNext(this, 'city_code')">
+                               
+                        <input type="text" name="city_code" id="city_code" maxlength="2" placeholder="01"
+                               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required onkeyup="moveToNext(this, 'series')">
+                               
+                        <input type="text" name="series" id="series" maxlength="2" placeholder="AA"
+                               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required onkeyup="moveToNext(this, 'digits')">
+                               
+                        <input type="text" name="digits" id="digits" maxlength="4" placeholder="1234"
+                               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required>
                     </div>
                 </div>
 
@@ -71,12 +78,6 @@
                     </select>
                 </div>
 
-                <!-- ✅ Name Input -->
-                <div>
-                    <label class="block text-gray-700 font-semibold">👤 નામ</label>
-                    <input type="text" name="name" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" required>
-                </div>
-
                 <!-- ✅ Mobile Number Input (Auto-Moving) -->
                 <div>
                     <label class="block text-gray-700 font-semibold">📞 તમારો મોબાઈલ નંબર</label>
@@ -89,6 +90,14 @@
                     </div>
                     <input type="hidden" name="mobile_no" id="mobile_no">
                 </div>
+
+                <!-- ✅ Name Input -->
+                <div>
+                    <label class="block text-gray-700 font-semibold">👤 નામ</label>
+                    <input type="text" name="name" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 text-sm sm:text-base" required>
+                </div>
+
+
 
                 <!-- ✅ Travel Reason -->
                 <div>
@@ -124,6 +133,13 @@
     </div>
 
 
+    <script>
+        function moveToNext(current, nextFieldId) {
+            if (current.value.length === current.maxLength) {
+                document.getElementById(nextFieldId).focus();
+            }
+        }
+    </script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             const inputs = document.querySelectorAll(".mobile-input");
@@ -167,13 +183,13 @@
     
             // Prevent manual date input outside allowed range
             startDateInput.addEventListener("input", function () {
-                if (this.value < "2025-02-22" || this.value > "2025-02-26") {
+                if (this.value < "2025-02-22") {
                     this.value = "2025-02-22";
                 }
             });
     
             endDateInput.addEventListener("input", function () {
-                if (this.value < "2025-02-22" || this.value > "2025-02-26") {
+                if (this.value > "2025-02-26") {
                     this.value = "2025-02-26";
                 }
             });
