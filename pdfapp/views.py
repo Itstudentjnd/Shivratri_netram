@@ -289,36 +289,44 @@ def approved_private(request):
     if request.session.get("role") == "user":
         selected_date = request.GET.get("approved_date", "").strip()
         
+        vehicle = VehiclePass.objects.all()
+        # ✅ Fetch only Approved Passes, Filter by Date if Selected
         vehicle_passes = VehiclePass.objects.filter(status="approved")
-        total_requests = vehicle_passes.count()  # 🔹 Total Approved Passes (All Time)
-        filtered_count = 0  # 🔹 Count of Approvals for Selected Date
+
         
+
         if selected_date:
             try:
                 selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
                 vehicle_passes = vehicle_passes.filter(approved_date=selected_date)
-                filtered_count = vehicle_passes.count()  # ✅ Count of Approved Passes for Selected Date
             except ValueError:
                 selected_date = ""
 
-        # 🔹 Add Approved By Name
+        # ✅ Debugging Statement (Check if Data is Fetched)
+        print("Filtered Vehicle Passes:", vehicle_passes)  # 🔍 Debug Output
+        
         for pass_obj in vehicle_passes:
             if pass_obj.approved_by:
                 user = User.objects.filter(id=pass_obj.approved_by).first()
                 pass_obj.approved_by_name = user.name if user else "Unknown"
+
+        total_requests = len(vehicle_passes)
+        tot_requests = len(vehicle)
 
         return render(
             request,
             "approved_private.html",
             {
                 "passes": vehicle_passes,
-                "total_requests": total_requests,  # ✅ Total Approved Passes (All Time)
-                "filtered_count": filtered_count,  # ✅ Approved Passes for Selected Date
-                "selected_date": selected_date,
+                "total_requests": total_requests,
+                "tot_requests": tot_requests,
+                "passes1": vehicle,
+                "selected_date": selected_date,  # Pass selected date to template
             },
         )
 
     return redirect(login_view)
+
 
 def export_vehicle_passes(request):
     # ✅ Create a new Excel workbook and sheet
