@@ -1,40 +1,71 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="gu">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Gujarat Police</title>
+    <title>લૉગિન - જુનાગઢ પોલીસ</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 🔥 Background Slideshow */
+        .bg-slideshow {
+            background-size: cover;
+            background-position: center;
+            animation: slideshow 15s infinite alternate;
+            opacity: 0.8;
+        }
+
+        @keyframes slideshow {
+            0% { background-image: url('{% get_media_prefix %}img1.jpeg'); }
+            50% { background-image: url('{% get_media_prefix %}img3.jpeg'); }
+            100% { background-image: url('{% get_media_prefix %}img1.jpeg'); }
+        }
+    </style>
 </head>
-<body class="bg-[#003366] flex items-center justify-center h-screen">
+<body class="flex flex-col md:flex-row h-screen">
 
-    <div class="bg-white p-8 rounded-lg shadow-lg max-w-sm w-full text-center">
-        <img src="{% get_media_prefix %}GUJARAT POLICE LOGO PNG.png" alt="Gujarat Police Logo" class="w-20 mx-auto mb-4">
+    <!-- ✅ Background Slideshow (Hidden on Small Screens) -->
+    <div class="hidden md:block md:w-3/5 lg:w-3/4 bg-slideshow"></div>
+
+    <!-- ✅ Left Side: Login Form -->
+    <div class="w-full md:w-2/5 lg:w-1/4 bg-white flex flex-col items-center justify-center p-6 md:p-8 shadow-lg">
         
-        <h2 class="text-[#003366] text-xl font-bold mb-4">Login</h2>
+        <!-- 🔵 Junagadh Police Title -->
+        <h1 class="text-[#003366] text-3xl md:text-4xl font-bold mb-4">જૂનાગઢ પોલીસ</h1>
 
-        {% if messages %}
-            <div class="bg-red-100 text-red-700 p-2 rounded-md mb-4">
-                {% for message in messages %}
-                    {{ message }}
-                {% endfor %}
-            </div>
-        {% endif %}
+        <div class="w-full max-w-xs">
+            <img src="{% get_media_prefix %}GUJARAT POLICE LOGO PNG.png" alt="Gujarat Police Logo" class="w-24 md:w-32 mx-auto mb-4">
+            <h2 class="text-[#003366] text-lg md:text-xl font-bold mb-4 text-center">Login</h2>
 
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-4">
-                <label class="block text-left text-gray-700 font-semibold">Mobile Number</label>
-                <input type="text" name="mobile_no" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#003366]" required>
-            </div>
-            <div class="mb-4">
-                <label class="block text-left text-gray-700 font-semibold">Password</label>
-                <input type="password" name="password" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#003366]" required>
-            </div>
-            <button type="submit" class="w-full bg-[#003366] text-white py-2 rounded-md hover:bg-[#002244] transition">Login</button>
-        </form>
+            {% if messages %}
+                <div class="bg-red-100 text-red-700 p-2 rounded-md mb-4 text-sm">
+                    {% for message in messages %}
+                        {{ message }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold">મોબાઈલ નંબર</label>
+                    <input type="text" name="mobile_no" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#003366]" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold">પાસવર્ડ</label>
+                    <input type="password" name="password" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#003366]" required>
+                </div>
+                <button type="submit" class="w-full bg-[#003366] text-white py-2 rounded-md hover:bg-[#002244] transition">Login</button>
+            </form>
+        </div>
     </div>
 
+    <!-- 🚫 Prevent Back Button After Logout -->
+    <script>
+        if (window.history.replaceState) {
+            window.history.replaceState(null, null, window.location.href);
+        }
+    </script>
+    
 </body>
 </html>
