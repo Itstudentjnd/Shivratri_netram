@@ -148,7 +148,7 @@ def issue_vehicle_pass(request):
                 other_reason = request.POST.get("other_reason", "").strip()
 
                 # 🛠 Fix: Ensure 'Other Reason' is not empty if selected
-                if travel_reason == "other":
+                if travel_reason == "અન્ય":  # ✅ Gujarati value match
                     if not other_reason:
                         messages.error(request, "❌ જો તમે 'અન્ય' પસંદ કરો છે, તો કૃપા કરીને કારણ દાખલ કરો!")
                         return redirect("issue_vehicle_pass")
@@ -156,7 +156,6 @@ def issue_vehicle_pass(request):
                     extra_name, extra_place = "", ""  # 🔥 Clear extra fields for 'Other' selection
                 else:
                     final_reason = travel_reason
-
                 vehicle_pass.travel_reason = final_reason
                 vehicle_pass.extra_name = extra_name
                 vehicle_pass.extra_place = extra_place
@@ -322,7 +321,7 @@ def export_vehicle_passes(request):
     sheet.title = "Vehicle Passes"
 
     # ✅ Add Headers (Gujarati & English Supported)
-    headers = ["ID", "Vehicle Number", "Applicant Name", 
+    headers = ["Pass No", "Vehicle Number", "Applicant Name", 
                "Mobile", "Vehicle Type", "Reason", 
                "Extra Name", "Extra Place", 
                "Start Date", "End Date", "Applied At", 
@@ -349,7 +348,7 @@ def export_vehicle_passes(request):
 
         # 🔹 Append Data to Excel
         sheet.append([
-            p.id, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
+            p.pass_no, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
             p.travel_reason, p.extra_name, p.extra_place, 
             p.start_date, p.end_date, 
             p.applied_at.strftime("%d-%m-%Y %I:%M %p"), 
@@ -374,7 +373,7 @@ def export_gov_vehicle_passes(request):
     sheet.title = "Vehicle Passes"
 
     # ✅ Add Headers (Gujarati & English Supported)
-    headers = ["ID", "Vehicle Number", "Applicant Name", 
+    headers = ["Pass No.", "Vehicle Number", "Applicant Name", 
                "Mobile", "Vehicle Type", "Reason", 
                "Extra Name", "Extra Place", 
                "Start Date", "End Date", "Applied At", 
@@ -401,7 +400,7 @@ def export_gov_vehicle_passes(request):
 
         # 🔹 Append Data to Excel
         sheet.append([
-            p.id, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
+            p.pass_no, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
             p.travel_reason, p.extra_name, 
             p.start_date, p.end_date, 
             p.applied_at.strftime("%d-%m-%Y %I:%M %p"), 

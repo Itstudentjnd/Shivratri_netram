@@ -53,19 +53,19 @@
                     <div class="grid grid-cols-4 gap-2">
                         <input type="text" name="state_code" id="state_code" maxlength="2" placeholder="GJ"
                                class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                               required onkeyup="moveToNext(this, 'city_code')">
+                               required oninput="moveToNext(this, 'city_code')" onkeydown="moveToPrev(event, this, null)">
                                
                         <input type="text" name="city_code" id="city_code" maxlength="2" placeholder="01"
                                class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                               required onkeyup="moveToNext(this, 'series')">
+                               required oninput="moveToNext(this, 'series')" onkeydown="moveToPrev(event, this, 'state_code')">
                                
                         <input type="text" name="series" id="series" maxlength="2" placeholder="AA"
                                class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                               required onkeyup="moveToNext(this, 'digits')">
+                               required oninput="moveToNext(this, 'digits')" onkeydown="moveToPrev(event, this, 'city_code')">
                                
                         <input type="text" name="digits" id="digits" maxlength="4" placeholder="1234"
                                class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-                               required>
+                               required onkeydown="moveToPrev(event, this, 'series')">
                     </div>
                 </div>
 
@@ -110,6 +110,8 @@
                         <option value="અન્નક્ષેત્ર" data-place="અન્નક્ષેત્રનું સરનામું">અન્નક્ષેત્ર માટે</option>
                         <option value="આશ્રમ/મંદીર " data-place="આશ્રમ/મંદીરનું સરનામું">આશ્રમ સેવા / પૂજા</option>
                         <option value="વેપાર / રોજગાર " data-place="વેપાર / રોજગારનું સરનામું">વેપાર / રોજગાર માટે</option>
+                        <option value="ધર્મશાળા " data-place="ધર્મશાળા સરનામું">ધર્મશાળા માટે</option>
+
                         <option value="અન્ય">અન્ય</option>
                     </select>
                 </div>
@@ -176,7 +178,13 @@
     <script>
         function moveToNext(current, nextFieldId) {
             if (current.value.length === current.maxLength) {
-                document.getElementById(nextFieldId).focus();
+                document.getElementById(nextFieldId)?.focus();
+            }
+        }
+    
+        function moveToPrev(event, current, prevFieldId) {
+            if (event.key === "Backspace" && current.value.length === 0 && prevFieldId) {
+                document.getElementById(prevFieldId)?.focus();
             }
         }
     </script>
