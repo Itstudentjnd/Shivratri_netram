@@ -67,25 +67,18 @@ class VehiclePass(models.Model):
     other_reason = models.CharField(max_length=255, blank=True, null=True)  # Optional field for extra details
 
     def generate_pass_no(self):
-        # ✅ Get all existing pass numbers, convert them to integers, and sort them
-        existing_numbers = [
-            int(pass_no) for pass_no in VehiclePass.objects.values_list("pass_no", flat=True) if pass_no is not None
-        ]
-        existing_numbers.sort()  # Ensure the list is sorted
-
+    # ✅ Get the highest existing pass number
+        latest_pass = VehiclePass.objects.exclude(pass_no=None).order_by("-pass_no").first()
+        
         # ✅ If no pass exists, start from 0001
-        if not existing_numbers:
+        if not latest_pass or not latest_pass.pass_no:
             return "0001"
 
-        # ✅ Find the smallest missing number in sequence
-        expected_no = 1  # Start from 1
-        for num in existing_numbers:
-            if num != expected_no:
-                break  # Found a gap, use this number
-            expected_no += 1
+        # ✅ Generate the next pass number
+        next_pass_no = int(latest_pass.pass_no) + 1
 
-        # ✅ Format number as a 4-digit string (e.g., "0006")
-        return f"{expected_no:04d}"  
+        # ✅ Format as a 4-digit string (e.g., "0006")
+        return f"{next_pass_no:04d}"  
 
 
                 
@@ -123,26 +116,20 @@ class GovVehiclePass(models.Model):
     pass_no = models.IntegerField(blank=True, null=True)
     # other_reason = models.CharField(max_length=255, blank=True, null=True)  # Optional field for extra details
 
+    
     def generate_pass_no(self):
-        # ✅ Get all existing pass numbers, convert them to integers, and sort them
-        existing_numbers = [
-            int(pass_no) for pass_no in VehiclePass.objects.values_list("pass_no", flat=True) if pass_no is not None
-        ]
-        existing_numbers.sort()  # Ensure the list is sorted
+        # ✅ Get the highest existing pass number
+            latest_pass = GovVehiclePass.objects.exclude(pass_no=None).order_by("-pass_no").first()
+            
+            # ✅ If no pass exists, start from 0001
+            if not latest_pass or not latest_pass.pass_no:
+                return "0001"
 
-        # ✅ If no pass exists, start from 0001
-        if not existing_numbers:
-            return "0001"
+            # ✅ Generate the next pass number
+            next_pass_no = int(latest_pass.pass_no) + 1
 
-        # ✅ Find the smallest missing number in sequence
-        expected_no = 1  # Start from 1
-        for num in existing_numbers:
-            if num != expected_no:
-                break  # Found a gap, use this number
-            expected_no += 1
-
-        # ✅ Format number as a 4-digit string (e.g., "0006")
-        return f"{expected_no:04d}"  
+            # ✅ Format as a 4-digit string (e.g., "0006")
+            return f"{next_pass_no:04d}"  
 
 
                 

@@ -488,6 +488,10 @@ def update_pass_status(request, pass_id, status):
             vehicle_pass.status = "rejected"
             vehicle_pass.reject_reason = reject_reason
             vehicle_pass.approved_by = admin_id
+
+            if vehicle_pass.pass_no:
+                print(f"⚠️ Removing pass_no: {vehicle_pass.pass_no} for rejected pass ID: {vehicle_pass.id}")
+                vehicle_pass.pass_no = None  # Remove the pass number
             vehicle_pass.save()
 
             print(f"✅ REJECTED: {vehicle_pass.id}, New Status: {vehicle_pass.status}")
@@ -545,6 +549,9 @@ def admin_update_pass_status(request, pass_id, status):
             vehicle_pass.status = "rejected"
             vehicle_pass.reject_reason = reject_reason
             vehicle_pass.approved_by = admin_id
+            if vehicle_pass.pass_no:
+                print(f"⚠️ Removing pass_no: {vehicle_pass.pass_no} for rejected pass ID: {vehicle_pass.id}")
+                vehicle_pass.pass_no = None  # Remove the pass number
             vehicle_pass.save()
 
             messages.success(request, "❌ Vehicle Pass Rejected Successfully!")
@@ -667,10 +674,10 @@ def generate_pass_image(request, pass_id):
 
 
     if vehicle_pass.extra_name:
-        office_label = f"{vehicle_pass.travel_reason} કચેરીનું નામ:"
+        office_label = f"{vehicle_pass.travel_reason}નું નામ:"
         office_value = vehicle_pass.extra_name
     elif vehicle_pass.other_reason:
-        office_label = f"{vehicle_pass.travel_reason} નું નામ:"
+        office_label = f"{vehicle_pass.travel_reason}નું નામ:"
         office_value = vehicle_pass.other_reason
     else:
         office_label = ""
