@@ -29,20 +29,29 @@ def login_view(request):
     if request.method == "POST":
         form = LoginForm(request.POST)
         if form.is_valid():
-            mobile_no = form.cleaned_data['mobile_no']
-            password = form.cleaned_data['password']
+            mobile_no = form.cleaned_data["mobile_no"]
+            password = form.cleaned_data["password"]
             user = User.objects.filter(mobile_no=mobile_no).first()
 
             if user:
                 # ✅ Check both hashed and plain text passwords
                 if check_password(password, user.password) or password == user.password:
-                    # 🔹 Store user data in session
-                    request.session['user_id'] = user.id
-                    request.session['user_name'] = user.name  # Store user name
-                    request.session['mobile_no'] = user.mobile_no  # Store mobile no
-                    request.session['role'] = user.role  # Store role
+                    # 🔹 Check if the mobile number is already in session
+                    active_sessions = request.session.get("active_users", {})
 
-                    # messages.success(request, "✅ Login successful!")
+                    if str(mobile_no) in active_sessions:
+                        messages.error(request, "❌ This mobile number is already logged in!")
+                        return redirect("login_view")
+
+                    # ✅ Store user data in session
+                    request.session["user_id"] = user.id
+                    request.session["user_name"] = user.name  # Store user name
+                    request.session["mobile_no"] = user.mobile_no  # Store mobile no
+                    request.session["role"] = user.role  # Store role
+                    
+                    # ✅ Track active logins
+                    request.session["active_users"] = active_sessions
+                    request.session["active_users"][str(mobile_no)] = user.id  # Store active user
 
                     if user.role == "admin":
                         return redirect("admin_vehicle_passes")
@@ -58,18 +67,19 @@ def login_view(request):
     form = LoginForm()
     return render(request, "login.html", {"form": form})
 
+
 # ✅ Logout View
 def logout_view(request):
-    logout(request)  # ✅ Logout user
-    request.session.flush()  # ✅ Destroy session completely
-    messages.success(request, "✅ Logged out successfully!")
+    mobile_no = request.session.get("mobile_no")
 
-    response = redirect("login_view")  # ✅ Redirect to login page
-    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-    response['Pragma'] = 'no-cache'
-    response['Expires'] = '0'
-    
-    return response
+    if mobile_no:
+        active_sessions = request.session.get("active_users", {})
+        active_sessions.pop(str(mobile_no), None)  # Remove user from active list
+        request.session["active_users"] = active_sessions  # Update session
+
+    request.session.flush()  # Clear session
+    return redirect("login_view")
+
 
 
 
