@@ -265,7 +265,7 @@ def admin_vehicle_passes(request):
     return redirect(login_view)
 
 def approved_gov(request):
-    if request.session.get("role") == "user":
+    if request.session.get("role") == "user1":
         selected_date = request.GET.get("approved_date", "").strip()
         
         vehicle = GovVehiclePass.objects.all() .order_by('-id')
