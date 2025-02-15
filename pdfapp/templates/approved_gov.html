@@ -72,7 +72,7 @@
     
         <!-- ✅ Card Container -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for pass in passes %}
+            {% for pass in passes1 %}
                 <div class="bg-white shadow-lg rounded-lg p-4 text-black card" data-status="{{ pass.status }}" data-vehicle="{{ pass.vehicle_number }}" data-mobile="{{ pass.mobile_no }}">
                     <!-- 🚗 Vehicle & Applicant Details -->
                     <h3 class="text-lg font-bold text-blue-900">{{ pass.vehicle_number }}</h3>
