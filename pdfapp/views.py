@@ -6,7 +6,7 @@ import pandas as pd
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
 from .models import *
-from .forms import PressPassForm, RegistrationForm, LoginForm, CSVUploadForm, VehiclePassForm, GovVehiclePassForm
+from .forms import GovVehiclePassUpdateForm, PressPassForm, RegistrationForm, LoginForm, CSVUploadForm, VehiclePassForm, GovVehiclePassForm, VehiclePassUpdateForm
 import qrcode
 import os
 import io
@@ -567,6 +567,7 @@ def admin_update_pass_status(request, pass_id, status):
     messages.success(request, "✅ Vehicle Pass Approved Successfully!")
     return redirect(redirect_url)
 
+
 def generate_pass_image(request, pass_id):
     # ✅ Get the pass record
     vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
@@ -665,23 +666,35 @@ def generate_pass_image(request, pass_id):
     formatted_date_end = vehicle_pass.end_date.strftime("%d-%m-%Y") if vehicle_pass.end_date else "N/A"
 
 
+    if vehicle_pass.extra_name:
+        office_label = f"{vehicle_pass.travel_reason} કચેરીનું નામ:"
+        office_value = vehicle_pass.extra_name
+    elif vehicle_pass.other_reason:
+        office_label = f"{vehicle_pass.travel_reason} નું નામ:"
+        office_value = vehicle_pass.other_reason
+    else:
+        office_label = ""
+        office_value = ""
     # ✅ Vehicle Entry Details with Dotted Lines
     fields = [
-        ("તારીખ:", formatted_date_start, 200, 500),
-        ("થી", "", 1000, 500),
-        ("તારીખ:", formatted_date_end, 1200, 500),
-        ("વાહન નંબર:", vehicle_pass.vehicle_number, 200, 650),
-        ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1200, 650),
-        ("નામ:", vehicle_pass.name, 200, 800),
-        ("મોબાઇલ નંબર:", vehicle_pass.mobile_no, 1200, 800),
-        ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 200, 950),
-        (f"{vehicle_pass.travel_reason} નું નામ:", vehicle_pass.other_reason, 1200, 950),
+        ("તારીખ:", formatted_date_start, 100, 500),
+        ("થી", "", 1100, 500),
+        ("તારીખ:", formatted_date_end, 1500, 500),
+        ("વાહન નંબર:", vehicle_pass.vehicle_number, 100, 650),
+        ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1500, 650),
+        ("નામ:", vehicle_pass.name, 100, 800),
+        ("મોબાઇલ નંબર:", vehicle_pass.mobile_no, 1500, 800),
+        ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 100, 950),
+        
     ]
+
+    if office_label:
+        fields.append((office_label, office_value, 1500, 950))
 
     for label, value, x, y in fields:
         draw.text((x, y), label, fill="black", font=font_bold)  # Bold Label
-        draw.text((x + 400, y), f"{value}", fill="black", font=font_normal)  # Normal Value
-        draw_dotted_line(draw, x, y + 60, x + 800)  # Dotted Line
+        draw.text((x + 340, y), f"{value}", fill="black", font=font_normal)  # Normal Value
+        draw_dotted_line(draw, x, y + 60, x + 1900)  # Dotted Line
 
     # ✅ Police Officer Signature Section
     draw.text((1950, 1400), "પોલીસ અધિક્ષક", fill="black", font=font_bold)
@@ -875,7 +888,7 @@ def generate_gov_pass_image(request, pass_id):
 
     # ✅ Paste QR Code on Pass
     qr_resized = qr_img.resize((500, 500))  # Increased size to make scanning easier
-    img.paste(qr_resized, (1200, 1050))  # Adjusted position
+    img.paste(qr_resized, (1000, 1050))  # Adjusted position
 
     # ✅ Function to Draw Dotted Lines
     def draw_dotted_line(draw, start_x, start_y, end_x, dot_spacing=20, dot_length=12):
@@ -892,21 +905,21 @@ def generate_gov_pass_image(request, pass_id):
 
     # ✅ Vehicle Entry Details with Dotted Lines
     fields = [
-        ("તારીખ:", formatted_date_start, 200, 500),
-        ("થી", "", 1000, 500),
-        ("તારીખ:", formatted_date_end, 1200, 500),
-        ("વાહન નંબર:", vehicle_pass.vehicle_number, 200, 650),
-        ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1200, 650),
-        ("નામ:", vehicle_pass.name, 200, 800),
-        ("મોબાઇલ નંબર:", vehicle_pass.mobile_no, 1200, 800),
-        ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 200, 950),
-        (f"{vehicle_pass.travel_reason} કચેરી નું નામ:", vehicle_pass.extra_name, 1200, 950),
+        ("તારીખ:", formatted_date_start, 100, 500),
+        ("થી", "", 1100, 500),
+        ("તારીખ:", formatted_date_end, 1500, 500),
+        ("વાહન નંબર:", vehicle_pass.vehicle_number, 100, 650),
+        ("વાહન પ્રકાર:", vehicle_pass.vehicle_type, 1500, 650),
+        ("નામ:", vehicle_pass.name, 100, 800),
+        ("મોબાઇલ નંબર:", vehicle_pass.mobile_no, 1500, 800),
+        ("પ્રવાસનું કારણ:", vehicle_pass.travel_reason, 100, 950),
+        (f"કચેરીનું નામ:", vehicle_pass.extra_name, 1500, 950),
     ]
 
     for label, value, x, y in fields:
         draw.text((x, y), label, fill="black", font=font_bold)  # Bold Label
-        draw.text((x + 400, y), f"{value}", fill="black", font=font_normal)  # Normal Value
-        draw_dotted_line(draw, x, y + 60, x + 800)  # Dotted Line
+        draw.text((x + 340, y), f"{value}", fill="black", font=font_normal)  # Normal Value
+        draw_dotted_line(draw, x, y + 60, x + 1900)  # Dotted Line
 
     # ✅ Police Officer Signature Section
     draw.text((1950, 1400), "પોલીસ અધિક્ષક", fill="black", font=font_bold)
@@ -1171,3 +1184,34 @@ def admin_download_pass_images(request, pass_id):
 #         # ✅ Provide Download Option
 #         return image_path, f"Download your Press Pass: /media/press-pass/pass_{record.name}.png"
     
+def update_vehicle_pass(request, pass_id):
+    if request.session.get("role") == "user":
+        vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
+        
+        if request.method == "POST":
+            form = VehiclePassUpdateForm(request.POST, instance=vehicle_pass)
+            if form.is_valid():
+                form.save()
+                return redirect("approved_private")  # Redirect to list page
+
+        else:
+            form = VehiclePassUpdateForm(instance=vehicle_pass)
+
+        return render(request, "update_vehicle_pass.html", {"form": form, "vehicle_pass": vehicle_pass})
+    return redirect(login_view)
+
+def update_gov_vehicle_pass(request, pass_id):
+    if request.session.get("role") == "user1":
+        vehicle_pass = get_object_or_404(GovVehiclePass, id=pass_id)
+        
+        if request.method == "POST":
+            form = GovVehiclePassUpdateForm(request.POST, instance=vehicle_pass)
+            if form.is_valid():
+                form.save()
+                return redirect("approved_gov")  # Redirect to list page
+
+        else:
+            form = GovVehiclePassUpdateForm(instance=vehicle_pass)
+
+        return render(request, "update_Gov_vehicle_pass.html", {"form": form, "vehicle_pass": vehicle_pass})
+    return redirect(login_view)

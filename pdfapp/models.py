@@ -45,7 +45,7 @@ class VehiclePass(models.Model):
     vehicle_type = models.CharField(max_length=50)  # Removed choices to allow free input
     start_date = models.DateField()
     end_date = models.DateField()
-    travel_reason = models.TextField()
+    
 
     # ✅ Image Fields for Required Documents
     aadhaar_front = models.ImageField(upload_to="vehicle_photos/aadhaar_front/", null=True, blank=True)
