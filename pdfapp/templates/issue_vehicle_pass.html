@@ -176,18 +176,18 @@
     </div>
 
     <script>
-        function moveToNext(current, nextFieldId) {
-            if (current.value.length === current.maxLength) {
-                document.getElementById(nextFieldId)?.focus();
-            }
+    function moveToNext(current, nextFieldId) {
+        if (current.value.length === current.maxLength) {
+            document.getElementById(nextFieldId)?.focus();
         }
-    
-        function moveToPrev(event, current, prevFieldId) {
-            if (event.key === "Backspace" && current.value.length === 0 && prevFieldId) {
-                document.getElementById(prevFieldId)?.focus();
-            }
+    }
+
+    function moveToPrev(event, current, prevFieldId) {
+        if (event.key === "Backspace" && current.value.length === 0 && prevFieldId) {
+            document.getElementById(prevFieldId)?.focus();
         }
-    </script>
+    }
+</script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -260,24 +260,32 @@
                 let selectedOption = reasonSelect.options[reasonSelect.selectedIndex];
         
                 if (reasonSelect.value === "અન્ય") {
-                    // ⏩ Other Reason Selected → Show Textarea, Hide Name & Place Fields
+                    // ✅ Show Other Reason Field
                     otherReasonField.classList.remove("hidden");
+                    otherReasonInput.required = true;
+        
+                    // ❌ Hide Name & Place Fields
                     extraFields.classList.add("hidden");
-                    otherReasonInput.setAttribute("required", "true");
+                    extraName.required = false;
+                    extraPlace.required = false;
+                    extraName.value = "";
+                    extraPlace.value = "";
                 } else {
-                    // ✅ Selected Reason → Update Labels & Show Name & Place Fields
+                    // ✅ Show Name & Place Fields
                     let reasonText = selectedOption.value;
                     let placeText = selectedOption.getAttribute("data-place") || "સ્થળ";
         
                     selectedReasonLabel.innerHTML = `👤 ${reasonText} નામ`;
                     selectedPlaceLabel.innerHTML = `📍 ${placeText}`;
         
-                    {% comment %} extraName.value = reasonText;
-                    extraPlace.value = placeText; {% endcomment %}
-        
                     extraFields.classList.remove("hidden");
+                    extraName.required = true;
+                    extraPlace.required = true;
+        
+                    // ❌ Hide Other Reason Field
                     otherReasonField.classList.add("hidden");
-                    otherReasonInput.removeAttribute("required");
+                    otherReasonInput.required = false;
+                    otherReasonInput.value = "";
                 }
             });
         });
