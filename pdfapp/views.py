@@ -265,23 +265,44 @@ def admin_vehicle_passes(request):
     return redirect(login_view)
 
 def approved_gov(request):
-    if request.session.get("role") == "user1":
-        # 🔹 Fetch records from both tables
+    if request.session.get("role") == "user":
+        selected_date = request.GET.get("approved_date", "").strip()
+        
+        vehicle = GovVehiclePass.objects.all() .order_by('-id')
+        # ✅ Fetch only Approved Passes, Filter by Date if Selected
+        vehicle_passes = GovVehiclePass.objects.filter(status="approved")
 
-        gov_vehicle_passes = GovVehiclePass.objects.all().order_by('-id')
+        
 
-        # 🔹 Merge both querysets & order by latest entry
-        passes =  gov_vehicle_passes
+        if selected_date:
+            try:
+                selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+                vehicle_passes = vehicle_passes.filter(approved_date=selected_date)
+            except ValueError:
+                selected_date = ""
 
-        total_requests = len(passes)  # Total vehicle pass requests
-
-        # 🔹 Get user details for approval tracking
-        for pass_obj in passes:
-            if pass_obj.approved_by:  # If approved/rejected by someone
+        # ✅ Debugging Statement (Check if Data is Fetched)
+        print("Filtered Vehicle Passes:", vehicle_passes)  # 🔍 Debug Output
+        
+        for pass_obj in vehicle_passes:
+            if pass_obj.approved_by:
                 user = User.objects.filter(id=pass_obj.approved_by).first()
                 pass_obj.approved_by_name = user.name if user else "Unknown"
 
-        return render(request, 'approved_gov.html', {'passes': passes, 'total_requests': total_requests})
+        total_requests = len(vehicle_passes)
+        tot_requests = len(vehicle)
+
+        return render(
+            request,
+            "approved_gov.html",
+            {
+                "passes": vehicle_passes,
+                "total_requests": total_requests,
+                "tot_requests": tot_requests,
+                "passes1": vehicle,
+                "selected_date": selected_date,  # Pass selected date to template
+            },
+        )
 
     return redirect(login_view)
 
@@ -701,6 +722,8 @@ def generate_pass_image(request, pass_id):
         response = HttpResponse(pdf_file.read(), content_type="application/pdf")
         response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.vehicle_number}.pdf"'
         return response
+    
+    
 
 # def download_approved_passes(request):
 #     selected_date = request.GET.get("approved_date", "").strip()
