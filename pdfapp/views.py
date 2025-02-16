@@ -24,6 +24,7 @@ from reportlab.lib.pagesizes import A5, landscape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from itertools import chain
+from datetime import datetime
 
 # ✅ Login View
 def login_view(request):
