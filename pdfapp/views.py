@@ -254,7 +254,7 @@ def issue_gov_vehicle_pass(request):
 def admin_vehicle_passes(request):
     if request.session.get("role") == "admin":
         selected_date = request.GET.get("approved_date", "").strip()
-        pass_type_filter = request.GET.get("pass_type", "").strip()  # ✅ Get filter type from URL
+        pass_type_filter = request.GET.get("pass_type", "").strip()
 
         # Fetch all records from both tables
         vehicle_passes = VehiclePass.objects.all().order_by('-id')
@@ -266,7 +266,6 @@ def admin_vehicle_passes(request):
         elif pass_type_filter == "government":
             passes = gov_vehicle_passes
         else:
-            # If no filter is applied, show both types
             passes = sorted(
                 chain(vehicle_passes, gov_vehicle_passes), 
                 key=lambda obj: obj.id, 
@@ -276,15 +275,16 @@ def admin_vehicle_passes(request):
         total_requests = len(passes)
         all_requests = len(list(chain(vehicle_passes, gov_vehicle_passes)))
 
-        # ✅ Apply date filtering if a date is selected
-        if selected_date :
+        # ✅ Convert to timezone-aware datetime filtering
+        if selected_date:
             try:
                 selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
-                passes = [p for p in passes if p.approved_date == selected_date]
+                selected_date = timezone.make_aware(datetime.combine(selected_date, datetime.min.time()))
+                passes = [p for p in passes if p.approved_date.date() == selected_date.date()]
             except ValueError:
                 selected_date = ""
 
-        # Get user details for approval tracking
+        # ✅ Get user details for approval tracking
         users = {user.id: user for user in User.objects.all()}
 
         return render(
