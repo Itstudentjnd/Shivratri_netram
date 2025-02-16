@@ -88,6 +88,7 @@ DATABASES = {
         'PORT': '3306',
         'OPTIONS': {
             'sql_mode': 'STRICT_TRANS_TABLES',
+            'init_command': "SET time_zone='+05:30'",
         },
     }
 }
@@ -117,7 +118,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
