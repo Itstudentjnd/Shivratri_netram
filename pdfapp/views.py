@@ -741,14 +741,7 @@ def export_vehicle_passes(request):
 
     for p in passes:
         # 🔹 Get Approved By Name
-        approved_by_name = ""
-        if p.approved_by:  # If approved_by is not None
-            if p.approved_by in user_cache:
-                approved_by_name = user_cache[p.approved_by]  # Get from cache
-            else:
-                user = User.objects.filter(id=p.approved_by).first()  # Fetch User
-                approved_by_name = user.name if user else ""  # Get Name or Empty
-                user_cache[p.approved_by] = approved_by_name  # Store in cache
+        
 
         # 🔹 Append Data to Excel
         sheet.append([
@@ -758,7 +751,7 @@ def export_vehicle_passes(request):
             p.applied_at.strftime("%d-%m-%Y"), 
             p.status, 
             p.approved_date if p.approved_date else "", 
-            approved_by_name,  # ✅ Show Name Instead of ID
+            p.approved_by_name,  # ✅ Show Name Instead of ID
             p.reject_reason if p.status == "rejected" else ""
         ])
 
@@ -779,7 +772,7 @@ def export_gov_vehicle_passes(request):
     # ✅ Add Headers (Gujarati & English Supported)
     headers = ["Pass No.", "Vehicle Number", "Applicant Name", 
                "Mobile", "Vehicle Type", "Reason", 
-               "Extra Name", "Extra Place", 
+               "Extra Name", 
                "Start Date", "End Date", "Applied At", 
                "Status", "Approved Date", "Approved By", 
                "Rejection Reason"]
@@ -793,24 +786,17 @@ def export_gov_vehicle_passes(request):
 
     for p in passes:
         # 🔹 Get Approved By Name
-        approved_by_name = ""
-        if p.approved_by:  # If approved_by is not None
-            if p.approved_by in user_cache:
-                approved_by_name = user_cache[p.approved_by]  # Get from cache
-            else:
-                user = User.objects.filter(id=p.approved_by).first()  # Fetch User
-                approved_by_name = user.name if user else ""  # Get Name or Empty
-                user_cache[p.approved_by] = approved_by_name  # Store in cache
+        # p.approved_by_name
 
         # 🔹 Append Data to Excel
         sheet.append([
             p.pass_no, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
             p.travel_reason, p.extra_name, 
             p.start_date, p.end_date, 
-            p.applied_at.strftime("%d-%m-%Y %I:%M %p"), 
+            p.applied_at.strftime("%d-%m-%Y"), 
             p.status, 
             p.approved_date if p.approved_date else "", 
-            approved_by_name,  # ✅ Show Name Instead of ID
+            p.approved_by_name,  # ✅ Show Name Instead of ID
             p.reject_reason if p.status == "rejected" else ""
         ])
 
