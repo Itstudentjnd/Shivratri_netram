@@ -275,11 +275,13 @@ def admin_vehicle_passes(request):
         total_requests = len(passes)
         all_requests = len(list(chain(vehicle_passes, gov_vehicle_passes)))
 
-        # ✅ Convert to timezone-aware datetime filtering
+        # ✅ Convert selected_date to timezone-aware datetime
         if selected_date:
             try:
-                selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
-                selected_date = timezone.make_aware(datetime.combine(selected_date, datetime.min.time()))
+                selected_date = datetime.strptime(selected_date, "%Y-%m-%d")  # Keep it as datetime
+                selected_date = timezone.make_aware(selected_date.replace(hour=0, minute=0, second=0))
+                
+                # ✅ Filter approved_date with same day range
                 passes = [p for p in passes if p.approved_date.date() == selected_date.date()]
             except ValueError:
                 selected_date = ""
