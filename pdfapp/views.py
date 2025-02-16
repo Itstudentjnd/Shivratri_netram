@@ -18,13 +18,13 @@ from django.contrib.auth.hashers import check_password
 from django.contrib.auth import logout
 from PIL import Image, ImageDraw, ImageFont
 from django.utils.timezone import now, localtime, make_aware
-from django.utils import timezone
+
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A5, landscape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from itertools import chain
-from datetime import datetime
+
 
 # ✅ Login View
 def login_view(request):
