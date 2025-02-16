@@ -49,12 +49,12 @@
                            focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
             
                 <!-- 📅 Date Filter Form -->
-                <form method="GET" action="{% url 'approved_private' %}" class="flex flex-col md:flex-row items-center gap-2">
+                <form method="GET" class="flex flex-col md:flex-row items-center gap-2">
                     <label for="approved_date" class="text-gray-700 font-medium flex items-center">
                         📅 Select Date:
                     </label>
                     <input type="date" id="approved_date" name="approved_date" 
-                        value="{{ selected_date|date:'Y-m-d' }}" 
+                        value="{{ selected_date }}" 
                         class="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 
                             focus:border-blue-500 transition text-black duration-200">
 
@@ -92,6 +92,7 @@
         
         <!-- ✅ Card Container -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% if passes %}
             {% for pass in passes1 %}
                 <div class="bg-white shadow-lg rounded-lg p-4 text-black card" data-status="{{ pass.status }}" data-vehicle="{{ pass.vehicle_number }}" data-mobile="{{ pass.mobile_no }}">
                     <!-- 🚗 Vehicle & Applicant Details -->
@@ -187,9 +188,13 @@
                         
                     </div>
                 </div>
+                
             {% empty %}
                 <p class="text-center text-gray-600 col-span-3">🚫 **કોઈ પાસ રિકવેસ્ટ નથી**</p>
             {% endfor %}
+            {%else%}
+                <p class="text-center text-gray-600 col-span-3">🚫 **આજની તારીખમાં કોઈ પાસ Approve થયા નથી**</p>
+            {% endif %}
         </div>
     </div>
     
@@ -240,6 +245,8 @@
     }
     
     </script>
+
+    
 
 </body>
 </html>
