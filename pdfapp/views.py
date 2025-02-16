@@ -5,6 +5,7 @@ import openpyxl
 import pandas as pd
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
+import pytz
 from .models import *
 from .forms import GovVehiclePassUpdateForm, PressPassForm, RegistrationForm, LoginForm, CSVUploadForm, VehiclePassForm, GovVehiclePassForm, VehiclePassUpdateForm
 import qrcode
@@ -16,7 +17,7 @@ from django.contrib import messages
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth import logout
 from PIL import Image, ImageDraw, ImageFont
-from django.utils.timezone import now
+from django.utils.timezone import now, localtime, make_aware
 from django.utils import timezone
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A5, landscape
@@ -252,43 +253,49 @@ def issue_gov_vehicle_pass(request):
 def admin_vehicle_passes(request):
     if request.session.get("role") == "admin":
         selected_date = request.GET.get("approved_date", "").strip()
+        pass_type_filter = request.GET.get("pass_type", "").strip()  # ✅ Get filter type from URL
 
-        # 🔹 Fetch all records from both tables
+        # Fetch all records from both tables
         vehicle_passes = VehiclePass.objects.all().order_by('-id')
         gov_vehicle_passes = GovVehiclePass.objects.all().order_by('-id')
 
-        # 🔹 Merge both querysets & order by latest entry
-        passes = sorted(
-            chain(vehicle_passes, gov_vehicle_passes), 
-            key=lambda obj: obj.id, 
-            reverse=True
-        )
+        # Apply filtering based on pass_type
+        if pass_type_filter == "private":
+            passes = vehicle_passes
+        elif pass_type_filter == "government":
+            passes = gov_vehicle_passes
+        else:
+            # If no filter is applied, show both types
+            passes = sorted(
+                chain(vehicle_passes, gov_vehicle_passes), 
+                key=lambda obj: obj.id, 
+                reverse=True
+            )
 
-        total_requests = len(passes)  # Total vehicle pass requests
-        all_requests = len(list(chain(VehiclePass.objects.all(), GovVehiclePass.objects.all())))
+        total_requests = len(passes)
+        all_requests = len(list(chain(vehicle_passes, gov_vehicle_passes)))
 
         # ✅ Apply date filtering if a date is selected
-        if selected_date:
+        if selected_date :
             try:
                 selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
                 passes = [p for p in passes if p.approved_date == selected_date]
             except ValueError:
                 selected_date = ""
 
-        # 🔹 Get user details for approval tracking
-        for pass_obj in passes:
-            if pass_obj.approved_by:
-                user = User.objects.filter(id=pass_obj.approved_by).first()
-                pass_obj.approved_by_name = user.name if user else "Unknown"
+        # Get user details for approval tracking
+        users = {user.id: user for user in User.objects.all()}
 
         return render(
             request, 
             "admin_vehicle_passes.html", 
             {
-                "passes": passes, 
-                "total_requests": len(passes),  # Updated count after filtering
+                "passes": passes,
+                "total_requests": len(passes),
                 "all_requests": all_requests,
-                "selected_date": selected_date,  # Pass selected date to template
+                "selected_date": selected_date,
+                "users": users,
+                "pass_type_filter": pass_type_filter  # ✅ Pass the selected filter to the template
             }
         )
 
@@ -298,11 +305,8 @@ def approved_gov(request):
     if request.session.get("role") == "user1":
         selected_date = request.GET.get("approved_date", "").strip()
         
-        vehicle = GovVehiclePass.objects.all() .order_by('-id')
-        # ✅ Fetch only Approved Passes, Filter by Date if Selected
+        vehicle = GovVehiclePass.objects.all().order_by('-id')
         vehicle_passes = GovVehiclePass.objects.filter(status="approved")
-
-        
 
         if selected_date:
             try:
@@ -311,16 +315,17 @@ def approved_gov(request):
             except ValueError:
                 selected_date = ""
 
-        # ✅ Debugging Statement (Check if Data is Fetched)
-        print("Filtered Vehicle Passes:", vehicle_passes)  # 🔍 Debug Output
-        
         for pass_obj in vehicle_passes:
             if pass_obj.approved_by:
                 user = User.objects.filter(id=pass_obj.approved_by).first()
-                pass_obj.approved_by_name = user.name if user else "Unknown"
+                # pass_obj.approved_by_name = user.name if user else "Unknown"
 
         total_requests = len(vehicle_passes)
         tot_requests = len(vehicle)
+
+        # ✅ Generate PDFs and ZIP file
+        if request.GET.get("download_zip") == "1":
+            return generate_zip(vehicle_passes)
 
         return render(
             request,
@@ -330,53 +335,403 @@ def approved_gov(request):
                 "total_requests": total_requests,
                 "tot_requests": tot_requests,
                 "passes1": vehicle,
-                "selected_date": selected_date,  # Pass selected date to template
+                "selected_date": selected_date,
             },
         )
 
     return redirect(login_view)
 
+def generate_zip(vehicle_passes):
+    zip_filename = os.path.join(settings.MEDIA_ROOT, "vehicle-pass", "approved_passes.zip")
+    os.makedirs(os.path.dirname(zip_filename), exist_ok=True)
+
+    with zipfile.ZipFile(zip_filename, "w") as zipf:
+        for pass_obj in vehicle_passes:
+            pdf_path = generate_gov_pass_pdf(pass_obj,position="top")  # Generate and get PDF path
+            if pdf_path:
+                zipf.write(pdf_path, os.path.basename(pdf_path))
+
+    with open(zip_filename, "rb") as zip_file:
+        response = HttpResponse(zip_file.read(), content_type="application/zip")
+        response["Content-Disposition"] = 'attachment; filename="approved_passes.zip"'
+        return response
+
+def generate_gov_pass_pdf(pass_obj, position="top"):
+    # ✅ Generate A5 Landscape Pass Image
+    image_size = (2480, 1748)  # A5 Size
+    img = Image.new("RGB", image_size, "white")
+    draw = ImageDraw.Draw(img)
+
+    # ✅ Load Gujarati Font
+    def load_font(font_name, size):
+        font_path = os.path.join(settings.MEDIA_ROOT, "font", font_name)
+        try:
+            return ImageFont.truetype(font_path, size)
+        except IOError:
+            return ImageFont.truetype("arial.ttf", size)
+
+    # 🔹 Use "Noto Sans Gujarati" for proper rendering
+    font_title = load_font("NotoSansGujarati-Bold.ttf", 90)
+    font_main_head = load_font("NotoSansGujarati-Bold.ttf", 120)
+    font_normal = load_font("NotoSansGujarati-Regular.ttf", 50)
+    font_bold = load_font("NotoSansGujarati-Bold.ttf", 50)
+
+    # ✅ Header Section
+    draw.text((400, 80), "જૂનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_main_head)
+    draw.line([(100, 260), (2380, 260)], fill="black", width=6)
+
+    formatted_date = pass_obj.approved_date.strftime("%d-%m-%Y")
+
+    draw.text((1900, 280), f"પાસ નંબર: {pass_obj.pass_no}/2025", fill="black", font=font_bold)
+    draw.text((1900, 380), f"ઈશ્યુ તારીખ: {formatted_date}", fill="black", font=font_bold)
+
+    # ✅ Police Logo
+    logo_path = os.path.join(settings.MEDIA_ROOT, "junagadh_police.png")
+    if os.path.exists(logo_path):
+        police_logo = Image.open(logo_path).convert("RGBA")
+        police_logo = police_logo.resize((230, 230))
+        img.paste(police_logo, (100, 20), police_logo)
+
+    # ✅ QR Code Generation
+    qr_data = f"""
+    નામ: {pass_obj.name}
+    મોબાઇલ: {pass_obj.mobile_no}
+    વાહન નંબર: {pass_obj.vehicle_number}
+    વાહન પ્રકાર: {pass_obj.vehicle_type}
+    શરુઆત તારીખ: {pass_obj.start_date}
+    અંતિમ તારીખ: {pass_obj.end_date}
+    """
+    
+    qr = qrcode.QRCode(
+        version=5, 
+        error_correction=qrcode.constants.ERROR_CORRECT_H,  
+        box_size=10,
+        border=2
+    )
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+
+    # ✅ Center Image in QR Code
+    center_img_path = os.path.join(settings.MEDIA_ROOT, "GUJARAT POLICE LOGO PNG.png")
+    if os.path.exists(center_img_path):
+        center_img = Image.open(center_img_path).convert("RGBA")
+        qr_size = qr_img.size[0]
+        center_img = center_img.resize((int(qr_size // 3), int(qr_size // 3)))  
+
+        qr_x = (qr_img.size[0] - center_img.size[0]) // 2
+        qr_y = (qr_img.size[1] - center_img.size[1]) // 2
+        qr_img.paste(center_img, (qr_x, qr_y), center_img)
+
+    qr_resized = qr_img.resize((500, 500))
+    img.paste(qr_resized, (1000, 1050))  
+
+    def draw_dotted_line(draw, start_x, start_y, end_x, dot_spacing=20, dot_length=12):
+        x = start_x
+        while x < end_x:
+            draw.line([(x, start_y), (x + dot_length, start_y)], fill="black", width=3)
+            x += dot_spacing  
+
+    # ✅ Pass Title
+    draw.text((700, 280), "સરકારી વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
+
+    # ✅ Save Image
+    formatted_date_start = pass_obj.start_date.strftime("%d-%m-%Y") if pass_obj.start_date else "N/A"
+    formatted_date_end = pass_obj.end_date.strftime("%d-%m-%Y") if pass_obj.end_date else "N/A"
+
+
+    if pass_obj.extra_name:
+        office_label = f"સરકારી કચેરીનું નામ:"
+        office_value = pass_obj.extra_name
+    elif pass_obj.other_reason:
+        office_label = f"સરકારી કચેરીનું નામ:"
+        office_value = pass_obj.other_reason
+    else:
+        office_label = ""
+        office_value = ""
+    # ✅ Vehicle Entry Details with Dotted Lines
+    fields = [
+        ("તારીખ:", formatted_date_start, 100, 500),
+        ("થી", "", 1100, 500),
+        ("તારીખ:", formatted_date_end, 1500, 500),
+        ("વાહન નંબર:", pass_obj.vehicle_number, 100, 650),
+        ("વાહન પ્રકાર:", pass_obj.vehicle_type, 1500, 650),
+        ("નામ:", pass_obj.name, 100, 800),
+        ("મોબાઇલ નંબર:", pass_obj.mobile_no, 1500, 800),
+        ("પ્રવાસનું કારણ:", pass_obj.travel_reason, 100, 950),
+        
+    ]
+
+    if office_label:
+        fields.append((office_label, office_value, 1500, 950))
+
+    for label, value, x, y in fields:
+        draw.text((x, y), label, fill="black", font=font_bold)  # Bold Label
+        draw.text((x + 400, y), f"{value}", fill="black", font=font_normal)  # Normal Value
+        draw_dotted_line(draw, x, y + 60, x + 1900)  # Dotted Line
+
+    # ✅ Police Officer Signature Section
+    draw.text((1950, 1400), "પોલીસ અધિક્ષક", fill="black", font=font_bold)
+    draw.text((2000, 1460), "જૂનાગઢ વતી,", fill="black", font=font_bold)
+
+    # ✅ Rules Section with Bullet Points
+    draw.line([(50, 1550), (2430, 1550)], fill="black", width=4)
+    draw.text((100, 1600), "• પાસનું ડુપ્લીકેશન કે કલર ફોટોકોપી કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_bold)
+    draw.text((100, 1660), "• ફરજ પરના પોલીસ કર્મચારીના વાસ્તવિક હુકમને આધિન રહેવું ફરજિયાત છે.", fill="black", font=font_bold)
+
+    # ✅ Save Image
+    vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
+    os.makedirs(vehicle_pass_folder, exist_ok=True)
+    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.vehicle_number}.png')
+    img.save(image_path)
+
+    # ✅ Ask user for position choice (frontend should send this choice in request)
+    
+
+    # ✅ Create A4 Portrait PDF and place A5 pass image inside it
+    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.vehicle_number}.pdf")
+    pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
+
+    # ✅ Set image position based on user choice
+    if position == "top":
+        pdf_canvas.drawImage(ImageReader(image_path), 0, 420, width=595, height=420)  # Top Half
+    elif position == "bottom":
+        pdf_canvas.drawImage(ImageReader(image_path), 0, 0, width=595, height=420)  # Bottom Half
+    else:
+        return JsonResponse({"error": "Invalid position. Use 'top' or 'bottom'."}, status=400)
+
+    # ✅ Save PDF
+    pdf_canvas.showPage()
+    pdf_canvas.save()
+
+    return pdf_path  # ✅ Return the PDF path
+
 def approved_private(request):
     if request.session.get("role") == "user":
-        selected_date = request.GET.get("approved_date", "").strip()
+        selected_date_str = request.GET.get('approved_date', '')
+        start_time_str = request.GET.get('start_time', '')
+        end_time_str = request.GET.get('end_time', '')
+
+        passes1 = VehiclePass.objects.filter(status="approved")  # Default QuerySet
         
         vehicle = VehiclePass.objects.all() .order_by('-id')
-        # ✅ Fetch only Approved Passes, Filter by Date if Selected
-        vehicle_passes = VehiclePass.objects.filter(status="approved")
+        
 
         
 
-        if selected_date:
+        if selected_date_str:
             try:
-                selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
-                vehicle_passes = vehicle_passes.filter(approved_date=selected_date)
-            except ValueError:
-                selected_date = ""
+                selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
+                passes1 = passes1.filter(approved_date__date=selected_date)  # Filter by Date
 
-        # ✅ Debugging Statement (Check if Data is Fetched)
-        print("Filtered Vehicle Passes:", vehicle_passes)  # 🔍 Debug Output
+                if start_time_str and end_time_str:
+                    start_time = datetime.strptime(start_time_str, "%H:%M").time()
+                    end_time = datetime.strptime(end_time_str, "%H:%M").time()
+
+                    passes1 = passes1.filter(
+                        approved_date__time__gte=start_time,
+                        approved_date__time__lte=end_time
+                    )  # Time Range Filter
+
+            except ValueError:
+                selected_date_str = ''  # Ignore invalid input
         
-        for pass_obj in vehicle_passes:
+
+        for pass_obj in passes1:
             if pass_obj.approved_by:
                 user = User.objects.filter(id=pass_obj.approved_by).first()
-                pass_obj.approved_by_name = user.name if user else "Unknown"
+                # pass_obj.approved_by_name = user.name if user else "Unknown"
 
-        total_requests = len(vehicle_passes)
+        total_requests = len(passes1)
         tot_requests = len(vehicle)
+
+        # ✅ Generate PDFs and ZIP file
+        if request.GET.get("download_zip") == "1":
+            return generate_zip1(passes1)
 
         return render(
             request,
             "approved_private.html",
             {
-                "passes": vehicle_passes,
+                "passes": passes1,
                 "total_requests": total_requests,
                 "tot_requests": tot_requests,
                 "passes1": vehicle,
-                "selected_date": selected_date,  # Pass selected date to template
+                "selected_date": selected_date_str,  # Pass selected date to template
+                'selected_date': selected_date_str,
+                'start_time': start_time_str,
+                'end_time': end_time_str
             },
         )
 
     return redirect(login_view)
+
+def generate_zip1(vehicle_passes):
+    zip_filename = os.path.join(settings.MEDIA_ROOT, "vehicle-pass", "approved_passes.zip")
+    os.makedirs(os.path.dirname(zip_filename), exist_ok=True)
+
+    with zipfile.ZipFile(zip_filename, "w") as zipf:
+        for pass_obj in vehicle_passes:
+            pdf_path = generate_pass_pdf(pass_obj,position="top")  # Generate and get PDF path
+            if pdf_path:
+                zipf.write(pdf_path, os.path.basename(pdf_path))
+
+    with open(zip_filename, "rb") as zip_file:
+        response = HttpResponse(zip_file.read(), content_type="application/zip")
+        response["Content-Disposition"] = 'attachment; filename="approved_passes.zip"'
+        return response
+
+def generate_pass_pdf(pass_obj, position="top"):
+    # ✅ Generate A5 Landscape Pass Image
+    image_size = (2480, 1748)  # A5 Size
+    img = Image.new("RGB", image_size, "white")
+    draw = ImageDraw.Draw(img)
+
+    # ✅ Load Gujarati Font
+    def load_font(font_name, size):
+        font_path = os.path.join(settings.MEDIA_ROOT, "font", font_name)
+        try:
+            return ImageFont.truetype(font_path, size)
+        except IOError:
+            return ImageFont.truetype("arial.ttf", size)
+
+    # 🔹 Use "Noto Sans Gujarati" for proper rendering
+    font_title = load_font("NotoSansGujarati-Bold.ttf", 90)
+    font_main_head = load_font("NotoSansGujarati-Bold.ttf", 120)
+    font_normal = load_font("NotoSansGujarati-Regular.ttf", 50)
+    font_bold = load_font("NotoSansGujarati-Bold.ttf", 50)
+
+    # ✅ Header Section
+    draw.text((400, 80), "જૂનાગઢ પોલીસ - મહાશિવરાત્રી મેળો ૨૦૨૫", fill="black", font=font_main_head)
+    draw.line([(100, 260), (2380, 260)], fill="black", width=6)
+
+    formatted_date = pass_obj.approved_date.strftime("%d-%m-%Y")
+
+    draw.text((1900, 280), f"પાસ નંબર: {pass_obj.pass_no}/2025", fill="black", font=font_bold)
+    draw.text((1900, 380), f"ઈશ્યુ તારીખ: {formatted_date}", fill="black", font=font_bold)
+
+    # ✅ Police Logo
+    logo_path = os.path.join(settings.MEDIA_ROOT, "junagadh_police.png")
+    if os.path.exists(logo_path):
+        police_logo = Image.open(logo_path).convert("RGBA")
+        police_logo = police_logo.resize((230, 230))
+        img.paste(police_logo, (100, 20), police_logo)
+
+    # ✅ QR Code Generation
+    qr_data = f"""
+    નામ: {pass_obj.name}
+    મોબાઇલ: {pass_obj.mobile_no}
+    વાહન નંબર: {pass_obj.vehicle_number}
+    વાહન પ્રકાર: {pass_obj.vehicle_type}
+    શરુઆત તારીખ: {pass_obj.start_date}
+    અંતિમ તારીખ: {pass_obj.end_date}
+    """
+    
+    qr = qrcode.QRCode(
+        version=5, 
+        error_correction=qrcode.constants.ERROR_CORRECT_H,  
+        box_size=10,
+        border=2
+    )
+    qr.add_data(qr_data)
+    qr.make(fit=True)
+
+    qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGBA")
+
+    # ✅ Center Image in QR Code
+    center_img_path = os.path.join(settings.MEDIA_ROOT, "GUJARAT POLICE LOGO PNG.png")
+    if os.path.exists(center_img_path):
+        center_img = Image.open(center_img_path).convert("RGBA")
+        qr_size = qr_img.size[0]
+        center_img = center_img.resize((int(qr_size // 3), int(qr_size // 3)))  
+
+        qr_x = (qr_img.size[0] - center_img.size[0]) // 2
+        qr_y = (qr_img.size[1] - center_img.size[1]) // 2
+        qr_img.paste(center_img, (qr_x, qr_y), center_img)
+
+    qr_resized = qr_img.resize((500, 500))
+    img.paste(qr_resized, (1000, 1050))  
+
+    def draw_dotted_line(draw, start_x, start_y, end_x, dot_spacing=20, dot_length=12):
+        x = start_x
+        while x < end_x:
+            draw.line([(x, start_y), (x + dot_length, start_y)], fill="black", width=3)
+            x += dot_spacing  
+
+    # ✅ Pass Title
+    draw.text((700, 280), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
+
+    # ✅ Save Image
+    formatted_date_start = pass_obj.start_date.strftime("%d-%m-%Y") if pass_obj.start_date else "N/A"
+    formatted_date_end = pass_obj.end_date.strftime("%d-%m-%Y") if pass_obj.end_date else "N/A"
+
+
+    if pass_obj.extra_name:
+        office_label = f"{pass_obj.travel_reason}નું નામ:"
+        office_value = pass_obj.extra_name
+    elif pass_obj.other_reason:
+        office_label = f"{pass_obj.travel_reason} વિગત:"
+        office_value = pass_obj.other_reason
+    else:
+        office_label = ""
+        office_value = ""
+    # ✅ Vehicle Entry Details with Dotted Lines
+    fields = [
+        ("તારીખ:", formatted_date_start, 100, 500),
+        ("થી", "", 1100, 500),
+        ("તારીખ:", formatted_date_end, 1500, 500),
+        ("વાહન નંબર:", pass_obj.vehicle_number, 100, 650),
+        ("વાહન પ્રકાર:", pass_obj.vehicle_type, 1500, 650),
+        ("નામ:", pass_obj.name, 100, 800),
+        ("મોબાઇલ નંબર:", pass_obj.mobile_no, 1500, 800),
+        ("પ્રવાસનું કારણ:", pass_obj.travel_reason, 100, 950),
+        
+    ]
+
+    if office_label:
+        fields.append((office_label, office_value, 1500, 950))
+
+    for label, value, x, y in fields:
+        draw.text((x, y), label, fill="black", font=font_bold)  # Bold Label
+        draw.text((x + 400, y), f"{value}", fill="black", font=font_normal)  # Normal Value
+        draw_dotted_line(draw, x, y + 60, x + 1900)  # Dotted Line
+
+    # ✅ Police Officer Signature Section
+    draw.text((1950, 1400), "પોલીસ અધિક્ષક", fill="black", font=font_bold)
+    draw.text((2000, 1460), "જૂનાગઢ વતી,", fill="black", font=font_bold)
+
+    # ✅ Rules Section with Bullet Points
+    draw.line([(50, 1550), (2430, 1550)], fill="black", width=4)
+    draw.text((100, 1600), "• પાસનું ડુપ્લીકેશન કે કલર ફોટોકોપી કરાવી તેનો ઉપયોગ કરવો ગુનાહિત છે.", fill="black", font=font_bold)
+    draw.text((100, 1660), "• ફરજ પરના પોલીસ કર્મચારીના વાસ્તવિક હુકમને આધિન રહેવું ફરજિયાત છે.", fill="black", font=font_bold)
+
+    # ✅ Save Image
+    vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
+    os.makedirs(vehicle_pass_folder, exist_ok=True)
+    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.vehicle_number}.png')
+    img.save(image_path)
+
+    # ✅ Ask user for position choice (frontend should send this choice in request)
+    
+
+    # ✅ Create A4 Portrait PDF and place A5 pass image inside it
+    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.vehicle_number}.pdf")
+    pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
+
+    # ✅ Set image position based on user choice
+    if position == "top":
+        pdf_canvas.drawImage(ImageReader(image_path), 0, 420, width=595, height=420)  # Top Half
+    elif position == "bottom":
+        pdf_canvas.drawImage(ImageReader(image_path), 0, 0, width=595, height=420)  # Bottom Half
+    else:
+        return JsonResponse({"error": "Invalid position. Use 'top' or 'bottom'."}, status=400)
+
+    # ✅ Save PDF
+    pdf_canvas.showPage()
+    pdf_canvas.save()
+
+    return pdf_path  # ✅ Return the PDF path
 
 
 def export_vehicle_passes(request):
@@ -416,9 +771,9 @@ def export_vehicle_passes(request):
             p.pass_no, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
             p.travel_reason, p.extra_name, p.extra_place, 
             p.start_date, p.end_date, 
-            p.applied_at.strftime("%d-%m-%Y %I:%M %p"), 
+            p.applied_at.strftime("%d-%m-%Y"), 
             p.status, 
-            p.approved_date if p.approved_date else "", 
+            p.approved_date.strftime("%d-%m-%Y %I:%M %p") if p.approved_date else "", 
             approved_by_name,  # ✅ Show Name Instead of ID
             p.reject_reason if p.status == "rejected" else ""
         ])
@@ -432,54 +787,69 @@ def export_vehicle_passes(request):
     return response
 
 def export_gov_vehicle_passes(request):
-    # ✅ Create a new Excel workbook and sheet
+    # Create a new Excel workbook and sheet
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = "Vehicle Passes"
 
-    # ✅ Add Headers (Gujarati & English Supported)
-    headers = ["Pass No.", "Vehicle Number", "Applicant Name", 
-               "Mobile", "Vehicle Type", "Reason", 
-               "Extra Name", "Extra Place", 
-               "Start Date", "End Date", "Applied At", 
-               "Status", "Approved Date", "Approved By", 
-               "Rejection Reason"]
+    # Add headers (Gujarati & English Supported)
+    headers = [
+        "Pass No.", "Vehicle Number", "Applicant Name", "Mobile", "Vehicle Type", 
+        "Reason", "Extra Name", "Start Date", "End Date", 
+        "Applied At", "Status", "Approved Date", "Approved By", "Rejection Reason"
+    ]
     sheet.append(headers)
 
-    # ✅ Fetch all passes
+    # Fetch all GovVehiclePass records
     passes = GovVehiclePass.objects.all()
     
-    # ✅ Create a dictionary to cache user names (avoid multiple DB queries)
+    # Create a dictionary to cache user names (to avoid extra queries)
     user_cache = {}
 
     for p in passes:
-        # 🔹 Get Approved By Name
+        # Get Approved By Name
         approved_by_name = ""
-        if p.approved_by:  # If approved_by is not None
+        if p.approved_by:
             if p.approved_by in user_cache:
-                approved_by_name = user_cache[p.approved_by]  # Get from cache
+                approved_by_name = user_cache[p.approved_by]
             else:
-                user = User.objects.filter(id=p.approved_by).first()  # Fetch User
-                approved_by_name = user.name if user else ""  # Get Name or Empty
-                user_cache[p.approved_by] = approved_by_name  # Store in cache
+                user = User.objects.filter(id=p.approved_by).first()
+                approved_by_name = user.name if user else "Unknown"
+                user_cache[p.approved_by] = approved_by_name
 
-        # 🔹 Append Data to Excel
+        # Format dates (using a date-only format since applied_at and approved_date are DateField)
+        start_date_str = p.start_date.strftime("%d-%m-%Y") if p.start_date else ""
+        end_date_str = p.end_date.strftime("%d-%m-%Y") if p.end_date else ""
+        applied_at_str = p.applied_at.strftime("%d-%m-%Y") if p.applied_at else ""
+        approved_date_str = p.approved_date.strftime("%d-%m-%Y %I:%M %p") if p.approved_date else ""
+
+
+        # Append row data to the sheet
         sheet.append([
-            p.pass_no, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
-            p.travel_reason, p.extra_name, 
-            p.start_date, p.end_date, 
-            p.applied_at.strftime("%d-%m-%Y %I:%M %p"), 
-            p.status, 
-            p.approved_date if p.approved_date else "", 
-            approved_by_name,  # ✅ Show Name Instead of ID
+            p.pass_no,
+            p.vehicle_number,
+            p.name,
+            p.mobile_no,
+            p.vehicle_type,
+            p.travel_reason,
+            p.extra_name,
+            
+            start_date_str,
+            end_date_str,
+            applied_at_str,
+            p.status,
+            approved_date_str,
+            approved_by_name,
             p.reject_reason if p.status == "rejected" else ""
         ])
 
-    # ✅ Set Response Headers for Excel Download
-    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    # Set Response Headers for Excel Download
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
     response["Content-Disposition"] = 'attachment; filename="vehicle_passes.xlsx"'
     
-    # ✅ Save the workbook to response
+    # Save workbook to the response and return it
     workbook.save(response)
     return response
 
@@ -539,7 +909,8 @@ def update_pass_status(request, pass_id, status):
         vehicle_pass.status = "approved"
         vehicle_pass.reject_reason = ""
         vehicle_pass.approved_by = admin_id
-        vehicle_pass.approved_date = now().date()
+        
+        vehicle_pass.approved_date = now()
 
         if not vehicle_pass.pass_no:
             vehicle_pass.pass_no = vehicle_pass.generate_pass_no()
@@ -594,7 +965,9 @@ def admin_update_pass_status(request, pass_id, status):
         vehicle_pass.status = "approved"
         vehicle_pass.reject_reason = ""
         vehicle_pass.approved_by = admin_id
-        vehicle_pass.approved_date = now().date()
+        ist = pytz.timezone("Asia/Kolkata")
+        approved_time = now().astimezone(ist)
+        vehicle_pass.approved_date = approved_time
 
         if not vehicle_pass.pass_no:
             vehicle_pass.pass_no = vehicle_pass.generate_pass_no()
@@ -687,7 +1060,7 @@ def generate_pass_image(request, pass_id):
 
     # ✅ Paste QR Code on Pass
     qr_resized = qr_img.resize((500, 500))  # Increased size to make scanning easier
-    img.paste(qr_resized, (1200, 1050))  # Adjusted position
+    img.paste(qr_resized, (1000, 1050))  # Adjusted position
 
     # ✅ Function to Draw Dotted Lines
     def draw_dotted_line(draw, start_x, start_y, end_x, dot_spacing=20, dot_length=12):
@@ -707,7 +1080,7 @@ def generate_pass_image(request, pass_id):
         office_label = f"{vehicle_pass.travel_reason}નું નામ:"
         office_value = vehicle_pass.extra_name
     elif vehicle_pass.other_reason:
-        office_label = f"{vehicle_pass.travel_reason}નું નામ:"
+        office_label = f"{vehicle_pass.travel_reason} વિગત:"
         office_value = vehicle_pass.other_reason
     else:
         office_label = ""
@@ -730,7 +1103,7 @@ def generate_pass_image(request, pass_id):
 
     for label, value, x, y in fields:
         draw.text((x, y), label, fill="black", font=font_bold)  # Bold Label
-        draw.text((x + 340, y), f"{value}", fill="black", font=font_normal)  # Normal Value
+        draw.text((x + 450, y), f"{value}", fill="black", font=font_normal)  # Normal Value
         draw_dotted_line(draw, x, y + 60, x + 1900)  # Dotted Line
 
     # ✅ Police Officer Signature Section

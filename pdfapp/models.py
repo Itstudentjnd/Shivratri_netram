@@ -1,5 +1,6 @@
 from django.db import models
 import random
+from django.core.exceptions import ObjectDoesNotExist
 
 class Contact(models.Model):
     place = models.CharField(max_length=255)
@@ -62,9 +63,17 @@ class VehiclePass(models.Model):
     extra_name = models.CharField(max_length=255, blank=True, null=True)
     extra_place = models.CharField(max_length=255, blank=True, null=True)
     approved_by = models.IntegerField(null=True, blank=True)  # Stores Admin ID
-    approved_date = models.DateField(null=True, blank=True)
+    approved_date = models.DateTimeField(null=True, blank=True) 
     pass_no = models.IntegerField(blank=True, null=True)
     other_reason = models.CharField(max_length=255, blank=True, null=True)  # Optional field for extra details
+
+    @property
+    def approved_by_name(self):
+        try:
+            admin_user = User.objects.get(id=self.approved_by)
+            return admin_user.name
+        except ObjectDoesNotExist:
+            return "Unknown"
 
     def generate_pass_no(self):
     # ✅ Get the highest existing pass number
@@ -112,10 +121,17 @@ class GovVehiclePass(models.Model):
     extra_name = models.CharField(max_length=255, blank=True, null=True)
     
     approved_by = models.IntegerField(null=True, blank=True)  # Stores Admin ID
-    approved_date = models.DateField(null=True, blank=True)
+    approved_date = models.DateTimeField(null=True, blank=True)
     pass_no = models.IntegerField(blank=True, null=True)
     # other_reason = models.CharField(max_length=255, blank=True, null=True)  # Optional field for extra details
 
+    @property
+    def approved_by_name(self):
+        try:
+            admin_user = User.objects.get(id=self.approved_by)
+            return admin_user.name
+        except ObjectDoesNotExist:
+            return "Unknown"
     
     def generate_pass_no(self):
         # ✅ Get the highest existing pass number

@@ -1,4 +1,6 @@
 {% load static %}
+{% load custom_filters %}
+
 <!DOCTYPE html>
 <html lang="gu">
 <head>
@@ -68,6 +70,35 @@
                     </button>
                 </form>
             </div>
+
+            <div class="flex justify-between mb-4">
+            
+                <div class="flex flex-wrap items-center justify-between gap-2 sm:gap-4 md:gap-6 mb-4">
+                    <h2 class="text-lg sm:text-xl font-semibold">Vehicle Pass Requests</h2>
+                
+                    <div class="flex flex-wrap gap-2 sm:gap-4">
+                        <a href="{% url 'admin_vehicle_passes' %}" 
+                           class="px-4 py-2 rounded-md text-sm sm:text-base font-medium transition duration-200
+                                  {% if not pass_type_filter %} bg-blue-600 text-white {% else %} bg-gray-200 text-black hover:bg-gray-300 {% endif %}">
+                            All
+                        </a>
+                        
+                        <a href="?pass_type=government" 
+                           class="px-4 py-2 rounded-md text-sm sm:text-base font-medium transition duration-200
+                                  {% if pass_type_filter == 'government' %} bg-blue-600 text-white {% else %} bg-gray-200 text-black hover:bg-gray-300 {% endif %}">
+                            Government Passes
+                        </a>
+                        
+                        <a href="?pass_type=private" 
+                           class="px-4 py-2 rounded-md text-sm sm:text-base font-medium transition duration-200
+                                  {% if pass_type_filter == 'private' %} bg-blue-600 text-white {% else %} bg-gray-200 text-black hover:bg-gray-300 {% endif %}">
+                            Private Passes
+                        </a>
+                    </div>
+                </div>
+                
+            </div>
+            
     
             <!-- 🔽 Filter by Status -->
             <select id="statusFilter" onchange="filterCards()"
@@ -96,7 +127,7 @@
                     <p class="text-gray-500 text-sm"><strong>Start:</strong> {{ pass.start_date }}</p>
                     <p class="text-gray-500 text-sm"><strong>End:</strong> {{ pass.end_date }}</p>
                     <p class="text-gray-500 text-sm"><strong>Applied At:</strong> {{ pass.applied_at|date:"d-m-Y" }}</p>
-                    <p class="text-gray-500 text-sm"><strong>Approved At:</strong> {{ pass.approved_date }}</p>
+                    <p class="text-gray-500 text-sm"><strong>Approved At:</strong> {{ pass.approved_date|date:"d-m-Y h:i A" }}</p>
                     <p class="text-gray-500 text-sm"><strong>Approved by:</strong> {{ pass.approved_by_name }}</p>
     
                     {% if pass.pass_no %}
@@ -152,26 +183,17 @@
                             ✖ Reject
                         </button>
                         
-                        {% if pass.photo1%}
-
-                        <!-- 📥 Download Pass -->
-                        <a href="{% url 'generate_gov_pass_image' pass.id %}" 
-                            class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
-                            📥 Download Pass
-                        </a>
-
-                        {% endif %}
-
-                        {% if pass.aadhaar_front or pass.aadhaar_back or pass.rc_book or pass.license_photo %}
-
-                        <!-- 📥 Download Pass -->
-                        <a href="{% url 'generate_pass_image' pass.id %}" 
-                            class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
-                            📥 Download Pass
-                        </a>
-
-                        {% endif %}
-    
+                        {% if pass|pass_type == "Government" %}
+                                    <a href="{% url 'generate_gov_pass_image' pass.id %}" 
+                                        class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
+                                        📥 Download Government Approved Pass
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'generate_pass_image' pass.id %}" 
+                                        class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
+                                        📥 Download Private Approved Pass
+                                    </a>
+                                    {% endif %}
                         <!-- 📸 Download Images -->
                        
                         <a href="{% url 'admin_download_pass_images' pass.id %}" 
