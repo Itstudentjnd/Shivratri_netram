@@ -282,7 +282,8 @@ def admin_vehicle_passes(request):
                 selected_date = timezone.make_aware(selected_date.replace(hour=0, minute=0, second=0))
                 
                 # ✅ Filter approved_date with same day range
-                passes = [p for p in passes if p.approved_date.date() == selected_date.date()]
+                passes = [p for p in passes if p.approved_date == selected_date]
+
             except ValueError:
                 selected_date = ""
 
