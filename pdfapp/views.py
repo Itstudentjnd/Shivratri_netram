@@ -278,11 +278,12 @@ def admin_vehicle_passes(request):
         # ✅ Convert selected_date to timezone-aware datetime
         if selected_date:
             try:
-                selected_date = datetime.strptime(selected_date, "%Y-%m-%d")
-                selected_date = timezone.make_aware(selected_date)
+                selected_date = datetime.strptime(selected_date, "%Y-%m-%d")  # Convert to datetime
+                selected_date = timezone.make_aware(selected_date)  # Apply timezone
                 passes = [p for p in passes if p.approved_date.date() == selected_date.date()]
             except ValueError:
                 selected_date = ""
+
 
 
         # ✅ Get user details for approval tracking
