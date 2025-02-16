@@ -251,9 +251,11 @@ def issue_gov_vehicle_pass(request):
 # ✅ Admin Panel to View Requests
 def admin_vehicle_passes(request):
     if request.session.get("role") == "admin":
-        # 🔹 Fetch records from both tables
-        vehicle_passes = VehiclePass.objects.all()
-        gov_vehicle_passes = GovVehiclePass.objects.all()
+        selected_date = request.GET.get("approved_date", "").strip()
+
+        # 🔹 Fetch all records from both tables
+        vehicle_passes = VehiclePass.objects.all().order_by('-id')
+        gov_vehicle_passes = GovVehiclePass.objects.all().order_by('-id')
 
         # 🔹 Merge both querysets & order by latest entry
         passes = sorted(
@@ -263,14 +265,32 @@ def admin_vehicle_passes(request):
         )
 
         total_requests = len(passes)  # Total vehicle pass requests
+        all_requests = len(list(chain(VehiclePass.objects.all(), GovVehiclePass.objects.all())))
+
+        # ✅ Apply date filtering if a date is selected
+        if selected_date:
+            try:
+                selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+                passes = [p for p in passes if p.approved_date == selected_date]
+            except ValueError:
+                selected_date = ""
 
         # 🔹 Get user details for approval tracking
         for pass_obj in passes:
-            if pass_obj.approved_by:  # If approved/rejected by someone
+            if pass_obj.approved_by:
                 user = User.objects.filter(id=pass_obj.approved_by).first()
                 pass_obj.approved_by_name = user.name if user else "Unknown"
 
-        return render(request, 'admin_vehicle_passes.html', {'passes': passes, 'total_requests': total_requests})
+        return render(
+            request, 
+            "admin_vehicle_passes.html", 
+            {
+                "passes": passes, 
+                "total_requests": len(passes),  # Updated count after filtering
+                "all_requests": all_requests,
+                "selected_date": selected_date,  # Pass selected date to template
+            }
+        )
 
     return redirect(login_view)
 
