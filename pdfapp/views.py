@@ -5,7 +5,6 @@ import openpyxl
 import pandas as pd
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import HttpResponse, JsonResponse
-import pytz
 from .models import *
 from .forms import GovVehiclePassUpdateForm, PressPassForm, RegistrationForm, LoginForm, CSVUploadForm, VehiclePassForm, GovVehiclePassForm, VehiclePassUpdateForm
 import qrcode
@@ -17,14 +16,13 @@ from django.contrib import messages
 from django.contrib.auth.hashers import check_password
 from django.contrib.auth import logout
 from PIL import Image, ImageDraw, ImageFont
-from django.utils.timezone import now, localtime, make_aware
-
+from django.utils.timezone import now
+from django.utils import timezone
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A5, landscape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from itertools import chain
-
 
 # ✅ Login View
 def login_view(request):
@@ -254,7 +252,7 @@ def issue_gov_vehicle_pass(request):
 def admin_vehicle_passes(request):
     if request.session.get("role") == "admin":
         selected_date = request.GET.get("approved_date", "").strip()
-        pass_type_filter = request.GET.get("pass_type", "").strip()
+        pass_type_filter = request.GET.get("pass_type", "").strip()  # ✅ Get filter type from URL
 
         # Fetch all records from both tables
         vehicle_passes = VehiclePass.objects.all().order_by('-id')
@@ -266,6 +264,7 @@ def admin_vehicle_passes(request):
         elif pass_type_filter == "government":
             passes = gov_vehicle_passes
         else:
+            # If no filter is applied, show both types
             passes = sorted(
                 chain(vehicle_passes, gov_vehicle_passes), 
                 key=lambda obj: obj.id, 
@@ -275,18 +274,15 @@ def admin_vehicle_passes(request):
         total_requests = len(passes)
         all_requests = len(list(chain(vehicle_passes, gov_vehicle_passes)))
 
-        # ✅ Convert selected_date to timezone-aware datetime
+        # ✅ Apply date filtering if a date is selected
         if selected_date:
             try:
-                selected_date = datetime.strptime(selected_date, "%Y-%m-%d")  # Convert to datetime
-                selected_date = timezone.make_aware(selected_date)  # Apply timezone
-                passes = [p for p in passes if p.approved_date.date() == selected_date.date()]
+                selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+                passes = [p for p in passes if p.approved_date == selected_date]
             except ValueError:
                 selected_date = ""
 
-
-
-        # ✅ Get user details for approval tracking
+        # Get user details for approval tracking
         users = {user.id: user for user in User.objects.all()}
 
         return render(
@@ -512,59 +508,44 @@ def generate_gov_pass_pdf(pass_obj, position="top"):
 
 def approved_private(request):
     if request.session.get("role") == "user":
-        selected_date_str = request.GET.get('approved_date', '')
-        start_time_str = request.GET.get('start_time', '')
-        end_time_str = request.GET.get('end_time', '')
-
-        passes1 = VehiclePass.objects.filter(status="approved")  # Default QuerySet
+        selected_date = request.GET.get("approved_date", "").strip()
         
         vehicle = VehiclePass.objects.all() .order_by('-id')
-        
+        # ✅ Fetch only Approved Passes, Filter by Date if Selected
+        vehicle_passes = VehiclePass.objects.filter(status="approved")
 
         
 
-        if selected_date_str:
+        if selected_date:
             try:
-                selected_date = datetime.strptime(selected_date_str, "%Y-%m-%d").date()
-                passes1 = passes1.filter(approved_date__date=selected_date)  # Filter by Date
-
-                if start_time_str and end_time_str:
-                    start_time = datetime.strptime(start_time_str, "%H:%M").time()
-                    end_time = datetime.strptime(end_time_str, "%H:%M").time()
-
-                    passes1 = passes1.filter(
-                        approved_date__time__gte=start_time,
-                        approved_date__time__lte=end_time
-                    )  # Time Range Filter
-
+                selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+                vehicle_passes = vehicle_passes.filter(approved_date=selected_date)
             except ValueError:
-                selected_date_str = ''  # Ignore invalid input
-        
+                selected_date = ""
 
-        for pass_obj in passes1:
+        # ✅ Debugging Statement (Check if Data is Fetched)
+        print("Filtered Vehicle Passes:", vehicle_passes)  # 🔍 Debug Output
+        
+        for pass_obj in vehicle_passes:
             if pass_obj.approved_by:
                 user = User.objects.filter(id=pass_obj.approved_by).first()
                 # pass_obj.approved_by_name = user.name if user else "Unknown"
 
-        total_requests = len(passes1)
+        total_requests = len(vehicle_passes)
         tot_requests = len(vehicle)
 
-        # ✅ Generate PDFs and ZIP file
         if request.GET.get("download_zip") == "1":
-            return generate_zip1(passes1)
+            return generate_zip1(vehicle_passes)
 
         return render(
             request,
             "approved_private.html",
             {
-                "passes": passes1,
+                "passes": vehicle_passes,
                 "total_requests": total_requests,
                 "tot_requests": tot_requests,
                 "passes1": vehicle,
-                "selected_date": selected_date_str,  # Pass selected date to template
-                'selected_date': selected_date_str,
-                'start_time': start_time_str,
-                'end_time': end_time_str
+                "selected_date": selected_date,  # Pass selected date to template
             },
         )
 
@@ -576,7 +557,7 @@ def generate_zip1(vehicle_passes):
 
     with zipfile.ZipFile(zip_filename, "w") as zipf:
         for pass_obj in vehicle_passes:
-            pdf_path = generate_pass_pdf(pass_obj,position="top")  # Generate and get PDF path
+            pdf_path = generate_gov_pass_pdf1(pass_obj,position="top")  # Generate and get PDF path
             if pdf_path:
                 zipf.write(pdf_path, os.path.basename(pdf_path))
 
@@ -585,7 +566,7 @@ def generate_zip1(vehicle_passes):
         response["Content-Disposition"] = 'attachment; filename="approved_passes.zip"'
         return response
 
-def generate_pass_pdf(pass_obj, position="top"):
+def generate_gov_pass_pdf1(pass_obj, position="top"):
     # ✅ Generate A5 Landscape Pass Image
     image_size = (2480, 1748)  # A5 Size
     img = Image.new("RGB", image_size, "white")
@@ -663,7 +644,7 @@ def generate_pass_pdf(pass_obj, position="top"):
             x += dot_spacing  
 
     # ✅ Pass Title
-    draw.text((700, 280), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
+    draw.text((700, 280), "સરકારી વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
 
     # ✅ Save Image
     formatted_date_start = pass_obj.start_date.strftime("%d-%m-%Y") if pass_obj.start_date else "N/A"
@@ -776,7 +757,7 @@ def export_vehicle_passes(request):
             p.start_date, p.end_date, 
             p.applied_at.strftime("%d-%m-%Y"), 
             p.status, 
-            p.approved_date.strftime("%d-%m-%Y %I:%M %p") if p.approved_date else "", 
+            p.approved_date if p.approved_date else "", 
             approved_by_name,  # ✅ Show Name Instead of ID
             p.reject_reason if p.status == "rejected" else ""
         ])
@@ -790,69 +771,54 @@ def export_vehicle_passes(request):
     return response
 
 def export_gov_vehicle_passes(request):
-    # Create a new Excel workbook and sheet
+    # ✅ Create a new Excel workbook and sheet
     workbook = openpyxl.Workbook()
     sheet = workbook.active
     sheet.title = "Vehicle Passes"
 
-    # Add headers (Gujarati & English Supported)
-    headers = [
-        "Pass No.", "Vehicle Number", "Applicant Name", "Mobile", "Vehicle Type", 
-        "Reason", "Extra Name", "Start Date", "End Date", 
-        "Applied At", "Status", "Approved Date", "Approved By", "Rejection Reason"
-    ]
+    # ✅ Add Headers (Gujarati & English Supported)
+    headers = ["Pass No.", "Vehicle Number", "Applicant Name", 
+               "Mobile", "Vehicle Type", "Reason", 
+               "Extra Name", "Extra Place", 
+               "Start Date", "End Date", "Applied At", 
+               "Status", "Approved Date", "Approved By", 
+               "Rejection Reason"]
     sheet.append(headers)
 
-    # Fetch all GovVehiclePass records
+    # ✅ Fetch all passes
     passes = GovVehiclePass.objects.all()
     
-    # Create a dictionary to cache user names (to avoid extra queries)
+    # ✅ Create a dictionary to cache user names (avoid multiple DB queries)
     user_cache = {}
 
     for p in passes:
-        # Get Approved By Name
+        # 🔹 Get Approved By Name
         approved_by_name = ""
-        if p.approved_by:
+        if p.approved_by:  # If approved_by is not None
             if p.approved_by in user_cache:
-                approved_by_name = user_cache[p.approved_by]
+                approved_by_name = user_cache[p.approved_by]  # Get from cache
             else:
-                user = User.objects.filter(id=p.approved_by).first()
-                approved_by_name = user.name if user else "Unknown"
-                user_cache[p.approved_by] = approved_by_name
+                user = User.objects.filter(id=p.approved_by).first()  # Fetch User
+                approved_by_name = user.name if user else ""  # Get Name or Empty
+                user_cache[p.approved_by] = approved_by_name  # Store in cache
 
-        # Format dates (using a date-only format since applied_at and approved_date are DateField)
-        start_date_str = p.start_date.strftime("%d-%m-%Y") if p.start_date else ""
-        end_date_str = p.end_date.strftime("%d-%m-%Y") if p.end_date else ""
-        applied_at_str = p.applied_at.strftime("%d-%m-%Y") if p.applied_at else ""
-        approved_date_str = p.approved_date.strftime("%d-%m-%Y %I:%M %p") if p.approved_date else ""
-
-
-        # Append row data to the sheet
+        # 🔹 Append Data to Excel
         sheet.append([
-            p.pass_no,
-            p.vehicle_number,
-            p.name,
-            p.mobile_no,
-            p.vehicle_type,
-            p.travel_reason,
-            p.extra_name,
-            
-            start_date_str,
-            end_date_str,
-            applied_at_str,
-            p.status,
-            approved_date_str,
-            approved_by_name,
+            p.pass_no, p.vehicle_number, p.name, p.mobile_no, p.vehicle_type, 
+            p.travel_reason, p.extra_name, 
+            p.start_date, p.end_date, 
+            p.applied_at.strftime("%d-%m-%Y %I:%M %p"), 
+            p.status, 
+            p.approved_date if p.approved_date else "", 
+            approved_by_name,  # ✅ Show Name Instead of ID
             p.reject_reason if p.status == "rejected" else ""
         ])
 
-    # Set Response Headers for Excel Download
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    # ✅ Set Response Headers for Excel Download
+    response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     response["Content-Disposition"] = 'attachment; filename="vehicle_passes.xlsx"'
     
-    # Save workbook to the response and return it
+    # ✅ Save the workbook to response
     workbook.save(response)
     return response
 
@@ -912,8 +878,7 @@ def update_pass_status(request, pass_id, status):
         vehicle_pass.status = "approved"
         vehicle_pass.reject_reason = ""
         vehicle_pass.approved_by = admin_id
-        
-        vehicle_pass.approved_date = now()
+        vehicle_pass.approved_date = now().date()
 
         if not vehicle_pass.pass_no:
             vehicle_pass.pass_no = vehicle_pass.generate_pass_no()
@@ -968,9 +933,7 @@ def admin_update_pass_status(request, pass_id, status):
         vehicle_pass.status = "approved"
         vehicle_pass.reject_reason = ""
         vehicle_pass.approved_by = admin_id
-        ist = pytz.timezone("Asia/Kolkata")
-        approved_time = now().astimezone(ist)
-        vehicle_pass.approved_date = approved_time
+        vehicle_pass.approved_date = now().date()
 
         if not vehicle_pass.pass_no:
             vehicle_pass.pass_no = vehicle_pass.generate_pass_no()

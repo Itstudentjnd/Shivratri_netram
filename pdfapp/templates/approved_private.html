@@ -49,31 +49,21 @@
                            focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200">
             
                 <!-- 📅 Date Filter Form -->
-                <form method="GET" class="flex flex-col md:flex-row gap-4 items-center bg-white p-4 rounded-lg shadow-md">
-                    <div class="flex flex-col">
-                        <label for="approved_date" class="text-sm font-semibold text-gray-700">Select Date:</label>
-                        <input type="date" id="approved_date" name="approved_date" value="{{ selected_date }}" required
-                            class="px-3 py-2 border rounded-md focus:ring focus:ring-blue-300">
-                    </div>
-                
-                    <div class="flex flex-col">
-                        <label for="start_time" class="text-sm font-semibold text-gray-700">Start Time:</label>
-                        <input type="time" id="start_time" name="start_time" value="{{ start_time }}"
-                            class="px-3 py-2 border rounded-md focus:ring focus:ring-blue-300">
-                    </div>
-                
-                    <div class="flex flex-col">
-                        <label for="end_time" class="text-sm font-semibold text-gray-700">End Time:</label>
-                        <input type="time" id="end_time" name="end_time" value="{{ end_time }}"
-                            class="px-3 py-2 border rounded-md focus:ring focus:ring-blue-300">
-                    </div>
-                
+                <form method="GET" action="{% url 'approved_private' %}" class="flex flex-col md:flex-row items-center gap-2">
+                    <label for="approved_date" class="text-gray-700 font-medium flex items-center">
+                        📅 Select Date:
+                    </label>
+                    <input type="date" id="approved_date" name="approved_date" 
+                        value="{{ selected_date|date:'Y-m-d' }}" 
+                        class="p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 
+                            focus:border-blue-500 transition text-black duration-200">
+
                     <button type="submit"
-                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-all mt-2 md:mt-6">
-                        Filter
+                        class="px-4 py-2 bg-blue-600 text-white font-semibold rounded-md shadow-md 
+                               hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 transition duration-200">
+                        🔍 Filter
                     </button>
                 </form>
-                
                 
                 
             </div>
