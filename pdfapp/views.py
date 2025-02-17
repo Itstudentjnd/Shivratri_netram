@@ -486,14 +486,14 @@ def generate_gov_pass_pdf(pass_obj, position="top"):
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
-    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.vehicle_number}.png')
+    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.pass_no}.png')
     img.save(image_path)
 
     # ✅ Ask user for position choice (frontend should send this choice in request)
     
 
     # ✅ Create A4 Portrait PDF and place A5 pass image inside it
-    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.vehicle_number}.pdf")
+    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.pass_no}.pdf")
     pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
 
     # ✅ Set image position based on user choice
@@ -699,14 +699,14 @@ def generate_gov_pass_pdf1(pass_obj, position="top"):
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
-    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.vehicle_number}.png')
+    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.pass_no}.png')
     img.save(image_path)
 
     # ✅ Ask user for position choice (frontend should send this choice in request)
     
 
     # ✅ Create A4 Portrait PDF and place A5 pass image inside it
-    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.vehicle_number}.pdf")
+    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.pass_no}.pdf")
     pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
 
     # ✅ Set image position based on user choice
@@ -1076,14 +1076,14 @@ def generate_pass_image(request, pass_id):
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
-    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.vehicle_number}.png')
+    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.pass_no}.png')
     img.save(image_path)
 
     # ✅ Ask user for position choice (frontend should send this choice in request)
     position = request.GET.get("position", "top")  # Default to "top" if not provided
 
     # ✅ Create A4 Portrait PDF and place A5 pass image inside it
-    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.vehicle_number}.pdf")
+    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.pass_no}.pdf")
     pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
 
     # ✅ Set image position based on user choice
@@ -1101,7 +1101,7 @@ def generate_pass_image(request, pass_id):
     # ✅ Return PDF Response
     with open(pdf_path, "rb") as pdf_file:
         response = HttpResponse(pdf_file.read(), content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.vehicle_number}.pdf"'
+        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.pass_no}.pdf"'
         return response
     
     
@@ -1301,14 +1301,14 @@ def generate_gov_pass_image(request, pass_id):
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
-    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.vehicle_number}.png')
+    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.pass_no}.png')
     img.save(image_path)
 
     # ✅ Ask user for position choice (frontend should send this choice in request)
     position = request.GET.get("position", "top")  # Default to "top" if not provided
 
     # ✅ Create A4 Portrait PDF and place A5 pass image inside it
-    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.vehicle_number}.pdf")
+    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.pass_no}.pdf")
     pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
 
     # ✅ Set image position based on user choice
@@ -1326,7 +1326,7 @@ def generate_gov_pass_image(request, pass_id):
     # ✅ Return PDF Response
     with open(pdf_path, "rb") as pdf_file:
         response = HttpResponse(pdf_file.read(), content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.vehicle_number}.pdf"'
+        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.pass_no}.pdf"'
         return response
     
 
