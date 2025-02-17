@@ -93,108 +93,109 @@
         <!-- ✅ Card Container -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {% if passes %}
-            {% for pass in passes1 %}
-                <div class="bg-white shadow-lg rounded-lg p-4 text-black card" data-status="{{ pass.status }}" data-vehicle="{{ pass.vehicle_number }}" data-mobile="{{ pass.mobile_no }}">
-                    <!-- 🚗 Vehicle & Applicant Details -->
-                    <h3 class="text-lg font-bold text-blue-900">{{ pass.vehicle_number }}</h3>
-                    <p class="text-gray-600"><strong>Applicant:</strong> {{ pass.name }}</p>
-                    <p class="text-gray-600"><strong>Mobile:</strong> {{ pass.mobile_no }}</p>
-                    <p class="text-gray-600"><strong>Type:</strong> {{ pass.vehicle_type }}</p>
-                    <p class="text-gray-600"><strong>Reason:</strong> {{ pass.travel_reason }}</p>
-                    {% if pass.extra_name %}
-                    <p class="text-gray-600"><strong>Extra Name:</strong> {{ pass.extra_name }}</p>
-                    <p class="text-gray-600"><strong>Extra Place:</strong> {{ pass.extra_place }}</p>
-                    {% else %}
-                    
-                    <p class="text-gray-600"><strong>Other Reason:</strong> {{ pass.other_reason }}</p>
-                    {% endif %}
-                    <!-- 🗓 Dates -->
-                    <p class="text-gray-500 text-sm"><strong>Start:</strong> {{ pass.start_date }}</p>
-                    <p class="text-gray-500 text-sm"><strong>End:</strong> {{ pass.end_date }}</p>
-                    <p class="text-gray-500 text-sm"><strong>Applied At:</strong> {{ pass.applied_at|date:"d-m-Y" }}</p>
-                    <p class="text-gray-500 text-sm"><strong>Approved At:</strong> {{ pass.approved_date }}</p>
-                    <p class="text-gray-500 text-sm"><strong>Approved by:</strong> {{ pass.approved_by_name }}</p>
-                    {% if pass.pass_no %}
-                    <p class="text-gray-500 text-sm"><strong>Pass Number:</strong> {{ pass.pass_no }}</p>
-                    {% endif %}
-
-    
-                    <!-- 📝 Rejection Reason -->
-                    {% if pass.status == "rejected" %}
-                        <p class="text-red-600 font-bold">🚫 Rejected: {{ pass.reject_reason }}</p>
-                    {% endif %}
-    
-                    <!-- 📄 Documents -->
-                    <div class="mt-2">
-                        {% if pass.aadhaar_front %}
-                            <a href="{{ pass.aadhaar_front.url }}" target="_blank" class="text-blue-600 text-xs">Aadhaar Front</a> |
-                        {% endif %}
-                        {% if pass.aadhaar_back %}
-                            <a href="{{ pass.aadhaar_back.url }}" target="_blank" class="text-blue-600 text-xs">Aadhaar Back</a> |
-                        {% endif %}
-                        {% if pass.rc_book %}
-                            <a href="{{ pass.rc_book.url }}" target="_blank" class="text-blue-600 text-xs">RC Book</a> |
-                        {% endif %}
-                        {% if pass.license_photo %}
-                            <a href="{{ pass.license_photo.url }}" target="_blank" class="text-blue-600 text-xs">License</a>
-                        {% endif %}
-                    </div>
-    
-                    <!-- 🚦 Status -->
-                    <p class="mt-2 font-semibold">
-                        {% if pass.status == "approved" %}
-                            <span class="text-green-600">✔ Approved</span>
-                        {% elif pass.status == "rejected" %}
-                            <span class="text-red-600">✖ Rejected</span>
-                        {% else %}
-                            <span class="text-yellow-600">⏳ Pending</span>
-                        {% endif %}
-                    </p>
-    
-                    <!-- ✅ Buttons -->
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <!-- ✔ Approve -->
-                        <a href="{% url 'update_pass_status' pass.id 'approved' %}"
-                        class="bg-green-500 text-white px-3 py-2 rounded-md text-sm hover:bg-green-600 transition">
-                            ✔ Approve
-                        </a>
-
-    
-                        <!-- ✖ Reject -->
-                        <button onclick="openRejectModal('{{ pass.id }}')" 
-                            class="bg-red-500 text-white px-3 py-2 rounded-md text-sm hover:bg-red-600 transition">
-                            ✖ Reject
-                        </button>
-    
-                        <!-- 📥 Download Pass -->
-                        <a href="{% url 'generate_pass_image' pass.id %}" 
-                            class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
-                            📥 Download Pass
-                        </a>
-    
-                        <!-- 📸 Download Images -->
-                        
-                        <a href="{% url 'download_images' pass.id %}" 
-                            class="bg-purple-500 text-white px-3 py-2 rounded-md text-sm hover:bg-purple-600 transition">
-                            📸 Download Images
-                        </a>
-
-                        <a href="{% url 'update_vehicle_pass' pass.id %}" 
-                            class="bg-yellow-500 text-white px-3 py-2 rounded-md text-sm hover:bg-yellow-600 transition">
-                            Edit
-                        </a>
-
-
-                        
-                    </div>
-                </div>
-                
-            {% empty %}
-                <p class="text-center text-gray-600 col-span-3">🚫 **કોઈ પાસ રિકવેસ્ટ નથી**</p>
-            {% endfor %}
-            {%else%}
-                <p class="text-center text-gray-600 col-span-3">🚫 **આજની તારીખમાં કોઈ પાસ Approve થયા નથી**</p>
+    {% for pass in passes %}
+        <div class="bg-white shadow-lg rounded-lg p-4 text-black card" data-status="{{ pass.status }}" data-vehicle="{{ pass.vehicle_number }}" data-mobile="{{ pass.mobile_no }}">
+            <!-- 🚗 Vehicle & Applicant Details -->
+            <h3 class="text-lg font-bold text-blue-900">{{ pass.vehicle_number }}</h3>
+            <p class="text-gray-600"><strong>Applicant:</strong> {{ pass.name }}</p>
+            <p class="text-gray-600"><strong>Mobile:</strong> {{ pass.mobile_no }}</p>
+            <p class="text-gray-600"><strong>Type:</strong> {{ pass.vehicle_type }}</p>
+            <p class="text-gray-600"><strong>Reason:</strong> {{ pass.travel_reason }}</p>
+            
+            {% if pass.extra_name %}
+                <p class="text-gray-600"><strong>{{ pass.travel_reason }}નું નામ :</strong> {{ pass.extra_name }}</p>
+                <p class="text-gray-600"><strong>{{ pass.travel_reason }}નું સરનામું :</strong> {{ pass.extra_place }}</p>
+            {% else %}
+                <p class="text-gray-600"><strong>Other Reason:</strong> {{ pass.other_reason }}</p>
             {% endif %}
+            
+            <!-- 🗓 Dates -->
+            <p class="text-gray-500 text-sm"><strong>Start:</strong> {{ pass.start_date }}</p>
+            <p class="text-gray-500 text-sm"><strong>End:</strong> {{ pass.end_date }}</p>
+            <p class="text-gray-500 text-sm"><strong>Applied At:</strong> {{ pass.applied_at|date:"d-m-Y" }}</p>
+            <p class="text-gray-500 text-sm"><strong>Approved At:</strong> {{ pass.approved_date }}</p>
+            <p class="text-gray-500 text-sm"><strong>Approved by:</strong> {{ pass.approved_by_name }}</p>
+            
+            {% if pass.pass_no %}
+                <p class="text-gray-500 text-sm"><strong>Pass Number:</strong> {{ pass.pass_no }}</p>
+            {% endif %}
+
+            <!-- 📝 Rejection Reason -->
+            {% if pass.status == "rejected" %}
+                <p class="text-red-600 font-bold">🚫 Rejected: {{ pass.reject_reason }}</p>
+            {% endif %}
+
+            <!-- 📄 Documents -->
+            <div class="mt-2">
+                {% if pass.aadhaar_front %}
+                    <a href="{{ pass.aadhaar_front.url }}" target="_blank" class="text-blue-600 text-xs">Aadhaar Front</a> |
+                {% endif %}
+                {% if pass.aadhaar_back %}
+                    <a href="{{ pass.aadhaar_back.url }}" target="_blank" class="text-blue-600 text-xs">Aadhaar Back</a> |
+                {% endif %}
+                {% if pass.rc_book %}
+                    <a href="{{ pass.rc_book.url }}" target="_blank" class="text-blue-600 text-xs">RC Book</a> |
+                {% endif %}
+                {% if pass.license_photo %}
+                    <a href="{{ pass.license_photo.url }}" target="_blank" class="text-blue-600 text-xs">License</a>
+                {% endif %}
+            </div>
+
+            <!-- 🚦 Status -->
+            <p class="mt-2 font-semibold">
+                {% if pass.status == "approved" %}
+                    <span class="text-green-600">✔ Approved</span>
+                {% elif pass.status == "rejected" %}
+                    <span class="text-red-600">✖ Rejected</span>
+                {% else %}
+                    <span class="text-yellow-600">⏳ Pending</span>
+                {% endif %}
+            </p>
+
+            <!-- ✅ Buttons -->
+            <div class="mt-4 flex flex-wrap gap-2">
+                <!-- ✔ Approve -->
+                <a href="{% url 'update_pass_status' pass.id 'approved' %}"
+                class="bg-green-500 text-white px-3 py-2 rounded-md text-sm hover:bg-green-600 transition">
+                    ✔ Approve
+                </a>
+
+                <!-- ✖ Reject -->
+                <button onclick="openRejectModal('{{ pass.id }}')" 
+                    class="bg-red-500 text-white px-3 py-2 rounded-md text-sm hover:bg-red-600 transition">
+                    ✖ Reject
+                </button>
+
+                <!-- 📥 Download Pass -->
+                <a href="{% url 'generate_pass_image' pass.id %}" 
+                    class="bg-blue-500 text-white px-3 py-2 rounded-md text-sm hover:bg-blue-600 transition">
+                    📥 Download Pass
+                </a>
+
+                <!-- 📸 Download Images -->
+                <a href="{% url 'download_images' pass.id %}" 
+                    class="bg-purple-500 text-white px-3 py-2 rounded-md text-sm hover:bg-purple-600 transition">
+                    📸 Download Images
+                </a>
+
+                <!-- ✏ Edit -->
+                <a href="{% url 'update_vehicle_pass' pass.id %}" 
+                    class="bg-yellow-500 text-white px-3 py-2 rounded-md text-sm hover:bg-yellow-600 transition">
+                    ✏ Edit
+                </a>
+            </div>
+        </div>
+    {% empty %}
+        <p class="text-center text-gray-600 col-span-3">
+            🚫 {% if selected_date %} **આજની તારીખમાં કોઈ પાસ Approve થયા નથી** {% else %} **કોઈ પાસ રિકવેસ્ટ નથી** {% endif %}
+        </p>
+    {% endfor %}
+{% else %}
+    <p class="text-center text-gray-600 col-span-3">
+        🚫 **કોઈ પાસ રિકવેસ્ટ નથી**
+    </p>
+{% endif %}
+
         </div>
     </div>
     
