@@ -34,7 +34,9 @@ def login_view(request):
             user = User.objects.filter(mobile_no=mobile_no).first()
 
             if user:
+                # ✅ Check both hashed and plain text passwords
                 if check_password(password, user.password) or password == user.password:
+                    # 🔹 Check if the mobile number is already in session
                     active_sessions = request.session.get("active_users", {})
 
                     if str(mobile_no) in active_sessions:
@@ -43,16 +45,13 @@ def login_view(request):
 
                     # ✅ Store user data in session
                     request.session["user_id"] = user.id
-                    request.session["user_name"] = user.name
-                    request.session["mobile_no"] = user.mobile_no
-                    request.session["role"] = user.role
-
+                    request.session["user_name"] = user.name  # Store user name
+                    request.session["mobile_no"] = user.mobile_no  # Store mobile no
+                    request.session["role"] = user.role  # Store role
+                    
                     # ✅ Track active logins
                     request.session["active_users"] = active_sessions
-                    request.session["active_users"][str(mobile_no)] = user.id
-
-                    # ✅ Store Last Activity Timestamp
-                    request.session["last_activity"] = now().timestamp()  # Store current time in seconds
+                    request.session["active_users"][str(mobile_no)] = user.id  # Store active user
 
                     if user.role == "admin":
                         return redirect("admin_vehicle_passes")
@@ -325,10 +324,7 @@ def approved_gov(request):
 
         # ✅ Generate PDFs and ZIP file
         if request.GET.get("download_zip") == "1":
-            if vehicle_passes.exists():
-                return generate_zip(vehicle_passes)
-            else:
-                return redirect(request.path)  # Redirect if no records found
+            return generate_zip(vehicle_passes)
 
         return render(
             request,
@@ -486,14 +482,14 @@ def generate_gov_pass_pdf(pass_obj, position="top"):
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
-    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.pass_no}.png')
+    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.vehicle_number}.png')
     img.save(image_path)
 
     # ✅ Ask user for position choice (frontend should send this choice in request)
     
 
     # ✅ Create A4 Portrait PDF and place A5 pass image inside it
-    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.pass_no}.pdf")
+    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.vehicle_number}.pdf")
     pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
 
     # ✅ Set image position based on user choice
@@ -513,35 +509,33 @@ def generate_gov_pass_pdf(pass_obj, position="top"):
 def approved_private(request):
     if request.session.get("role") == "user":
         selected_date = request.GET.get("approved_date", "").strip()
-
-        # ✅ Fetch all records (for display purposes)
-        vehicle = VehiclePass.objects.all().order_by('-id')
-
-        # ✅ Filter only Approved records
+        
+        vehicle = VehiclePass.objects.all() .order_by('-id')
+        # ✅ Fetch only Approved Passes, Filter by Date if Selected
         vehicle_passes = VehiclePass.objects.filter(status="approved")
 
-        # ✅ Apply Date Filter if Selected
+        
+
         if selected_date:
             try:
-                selected_date_obj = datetime.strptime(selected_date, "%Y-%m-%d").date()
-                vehicle_passes = vehicle_passes.filter(approved_date=selected_date_obj)
+                selected_date = datetime.strptime(selected_date, "%Y-%m-%d").date()
+                vehicle_passes = vehicle_passes.filter(approved_date=selected_date)
             except ValueError:
                 selected_date = ""
 
-        # ✅ Fetch Approved By Name
+        # ✅ Debugging Statement (Check if Data is Fetched)
+        print("Filtered Vehicle Passes:", vehicle_passes)  # 🔍 Debug Output
+        
         for pass_obj in vehicle_passes:
             if pass_obj.approved_by:
                 user = User.objects.filter(id=pass_obj.approved_by).first()
+                # pass_obj.approved_by_name = user.name if user else "Unknown"
 
-        total_requests = vehicle_passes.count()
-        tot_requests = vehicle.count()
+        total_requests = len(vehicle_passes)
+        tot_requests = len(vehicle)
 
-        # ✅ Generate ZIP for Only Filtered Records
         if request.GET.get("download_zip") == "1":
-            if vehicle_passes.exists():
-                return generate_zip1(vehicle_passes)  # Only filtered passes are passed to ZIP
-            else:
-                return redirect(request.path)  # Redirect if no records found
+            return generate_zip1(vehicle_passes)
 
         return render(
             request,
@@ -551,7 +545,7 @@ def approved_private(request):
                 "total_requests": total_requests,
                 "tot_requests": tot_requests,
                 "passes1": vehicle,
-                "selected_date": selected_date,
+                "selected_date": selected_date,  # Pass selected date to template
             },
         )
 
@@ -684,7 +678,7 @@ def generate_gov_pass_pdf1(pass_obj, position="top"):
 
     for label, value, x, y in fields:
         draw.text((x, y), label, fill="black", font=font_bold)  # Bold Label
-        draw.text((x + 500, y), f"{value}", fill="black", font=font_normal)  # Normal Value
+        draw.text((x + 400, y), f"{value}", fill="black", font=font_normal)  # Normal Value
         draw_dotted_line(draw, x, y + 60, x + 1900)  # Dotted Line
 
     # ✅ Police Officer Signature Section
@@ -699,14 +693,14 @@ def generate_gov_pass_pdf1(pass_obj, position="top"):
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
-    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.pass_no}.png')
+    image_path = os.path.join(vehicle_pass_folder, f'{pass_obj.vehicle_number}.png')
     img.save(image_path)
 
     # ✅ Ask user for position choice (frontend should send this choice in request)
     
 
     # ✅ Create A4 Portrait PDF and place A5 pass image inside it
-    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.pass_no}.pdf")
+    pdf_path = os.path.join(vehicle_pass_folder, f"{pass_obj.vehicle_number}.pdf")
     pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
 
     # ✅ Set image position based on user choice
@@ -1076,14 +1070,14 @@ def generate_pass_image(request, pass_id):
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
-    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.pass_no}.png')
+    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.vehicle_number}.png')
     img.save(image_path)
 
     # ✅ Ask user for position choice (frontend should send this choice in request)
     position = request.GET.get("position", "top")  # Default to "top" if not provided
 
     # ✅ Create A4 Portrait PDF and place A5 pass image inside it
-    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.pass_no}.pdf")
+    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.vehicle_number}.pdf")
     pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
 
     # ✅ Set image position based on user choice
@@ -1101,7 +1095,7 @@ def generate_pass_image(request, pass_id):
     # ✅ Return PDF Response
     with open(pdf_path, "rb") as pdf_file:
         response = HttpResponse(pdf_file.read(), content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.pass_no}.pdf"'
+        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.vehicle_number}.pdf"'
         return response
     
     
@@ -1301,14 +1295,14 @@ def generate_gov_pass_image(request, pass_id):
     # ✅ Save Image
     vehicle_pass_folder = os.path.join(settings.MEDIA_ROOT, "vehicle-pass")
     os.makedirs(vehicle_pass_folder, exist_ok=True)
-    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.pass_no}.png')
+    image_path = os.path.join(vehicle_pass_folder, f'{vehicle_pass.vehicle_number}.png')
     img.save(image_path)
 
     # ✅ Ask user for position choice (frontend should send this choice in request)
     position = request.GET.get("position", "top")  # Default to "top" if not provided
 
     # ✅ Create A4 Portrait PDF and place A5 pass image inside it
-    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.pass_no}.pdf")
+    pdf_path = os.path.join(vehicle_pass_folder, f"{vehicle_pass.vehicle_number}.pdf")
     pdf_canvas = canvas.Canvas(pdf_path, pagesize=A4)
 
     # ✅ Set image position based on user choice
@@ -1326,7 +1320,7 @@ def generate_gov_pass_image(request, pass_id):
     # ✅ Return PDF Response
     with open(pdf_path, "rb") as pdf_file:
         response = HttpResponse(pdf_file.read(), content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.pass_no}.pdf"'
+        response["Content-Disposition"] = f'attachment; filename="{vehicle_pass.vehicle_number}.pdf"'
         return response
     
 

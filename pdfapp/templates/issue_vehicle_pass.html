@@ -47,43 +47,39 @@
 
                 </div>
 
-                <!-- ✅ Vehicle Type Dropdown -->
-<div class="mt-4">
-    <label class="block text-gray-700 font-semibold">🚘 વાહન પ્રકાર</label>
-    <select name="vehicle_type" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" required>
-        <option value="" selected disabled>વાહન પસંદ કરો</option>
-        <option value="2-wheel">2-Wheel</option>
-        <option value="3-wheel">3-Wheel</option>
-        <option value="4-wheel">4-Wheel</option>
-        <option value="E-vehicle">E-vehicle</option>  <!-- Hide vehicle number when selected -->
-        <option value="heavy-vehicle">Heavy Vehicle</option>
-    </select>
-</div>
+                <!-- ✅ Vehicle Number -->
+                <div>
+                    <label class="block text-gray-700 font-semibold">🚗 વાહન નંબર</label>
+                    <div class="grid grid-cols-4 gap-2">
+                        <input type="text" name="state_code" id="state_code" maxlength="2" placeholder="GJ"
+                               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required oninput="moveToNext(this, 'city_code')" onkeydown="moveToPrev(event, this, null)">
+                               
+                        <input type="text" name="city_code" id="city_code" maxlength="2" placeholder="01"
+                               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required oninput="moveToNext(this, 'series')" onkeydown="moveToPrev(event, this, 'state_code')">
+                               
+                        <input type="text" name="series" id="series" maxlength="2" placeholder="AA"
+                               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required oninput="moveToNext(this, 'digits')" onkeydown="moveToPrev(event, this, 'city_code')">
+                               
+                        <input type="text" name="digits" id="digits" maxlength="4" placeholder="1234"
+                               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
+                               required onkeydown="moveToPrev(event, this, 'series')">
+                    </div>
+                </div>
 
-<!-- ✅ Vehicle Number Input (Initially Visible) -->
-<div id="vehicle_number_section">
-    <label class="block text-gray-700 font-semibold">🚗 વાહન નંબર</label>
-    <div class="grid grid-cols-4 gap-2">
-        <input type="text" name="state_code" id="state_code" maxlength="2" placeholder="GJ"
-               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-               required oninput="moveToNext(this, 'city_code')" onkeydown="moveToPrev(event, this, null)">
-               
-        <input type="text" name="city_code" id="city_code" maxlength="2" placeholder="01"
-               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-               required oninput="moveToNext(this, 'series')" onkeydown="moveToPrev(event, this, 'state_code')">
-               
-        <input type="text" name="series" id="series" maxlength="2" placeholder="AA"
-               class="w-full p-2 border rounded-md text-center uppercase focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-               required oninput="moveToNext(this, 'digits')" onkeydown="moveToPrev(event, this, 'city_code')">
-               
-        <input type="text" name="digits" id="digits" maxlength="4" placeholder="1234"
-               class="w-full p-2 border rounded-md text-center focus:ring-2 focus:ring-blue-500 text-sm sm:text-base"
-               required onkeydown="moveToPrev(event, this, 'series')">
-    </div>
-</div>
-
-
-                
+                <!-- ✅ Vehicle Type -->
+                <div class="mt-4">
+                    <label class="block text-gray-700 font-semibold">🚘 વાહન પ્રકાર</label>
+                    <select name="vehicle_type" class="w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500" required>
+                        <option value="" selected disabled>વાહન પસંદ કરો</option>
+                        <option value="2-wheel">2-Wheel</option>
+                        <option value="3-wheel">3-Wheel</option>
+                        <option value="4-wheel">4-Wheel</option>
+                        <option value="heavy-vehicle">Heavy Vehicle</option>
+                    </select>
+                </div>
 
                 <!-- ✅ Mobile Number Input -->
                 <div class="mt-4">
@@ -295,33 +291,6 @@
         });
         
 </script>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const vehicleTypeSelect = document.querySelector("select[name='vehicle_type']"); // Dropdown
-        const vehicleNumberDiv = document.getElementById("vehicle_number_section"); // Vehicle number section
-
-        vehicleTypeSelect.addEventListener("change", function () {
-            if (this.value === "E-vehicle") {  
-                vehicleNumberDiv.style.display = "none"; // Hide vehicle number fields
-                // Remove 'required' attribute when hidden
-                document.getElementById("state_code").removeAttribute("required");
-                document.getElementById("city_code").removeAttribute("required");
-                document.getElementById("series").removeAttribute("required");
-                document.getElementById("digits").removeAttribute("required");
-            } else {
-                vehicleNumberDiv.style.display = "block"; // Show vehicle number fields
-                // Add 'required' attribute when visible
-                document.getElementById("state_code").setAttribute("required", "true");
-                document.getElementById("city_code").setAttribute("required", "true");
-                document.getElementById("series").setAttribute("required", "true");
-                document.getElementById("digits").setAttribute("required", "true");
-            }
-        });
-    });
-</script>
-
-
 
 </body>
 </html>
