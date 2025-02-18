@@ -11,7 +11,8 @@ urlpatterns = [
     path('issue-gov-vehicle-pass/', views.issue_gov_vehicle_pass, name='issue_gov_vehicle_pass'),
     path('issue-vehicle-pass/', views.issue_vehicle_pass, name='issue_vehicle_pass'),
     path('admin-vehicle-passes/', views.admin_vehicle_passes, name='admin_vehicle_passes'),
-    path('update-pass-status/<int:pass_id>/<str:status>/', views.update_pass_status, name='update_pass_status'),
+    path("update-gov-pass/<int:pass_id>/<str:status>/", views.update_gov_pass_status, name="update_gov_pass_status"),
+    path("update-private-pass/<int:pass_id>/<str:status>/", views.update_private_pass_status, name="update_private_pass_status"),
     path("admin-update-pass-status/<int:pass_id>/<str:status>/", views.admin_update_pass_status, name="admin_update_pass_status"),
 
     path("generate_pass_image/<int:pass_id>/", views.generate_pass_image, name="generate_pass_image"),

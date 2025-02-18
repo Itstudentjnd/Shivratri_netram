@@ -813,27 +813,20 @@ def export_gov_vehicle_passes(request):
     workbook.save(response)
     return response
 
-def update_pass_status(request, pass_id, status):
+def update_gov_pass_status(request, pass_id, status):
     admin_id = request.session.get("user_id")  # Get admin ID from session
     is_admin = request.session.get("is_admin", False)  # Ensure this exists in the session
 
     if status not in ["approved", "rejected"]:
         return HttpResponse("❌ Invalid Status!", status=400)
 
-    # ✅ Check if it's a Government Pass
-    vehicle_pass = GovVehiclePass.objects.filter(id=pass_id).first()
-    if vehicle_pass:
-        redirect_url = "approved_gov"  # Default for Gov passes
-    else:
-        # ✅ If not found in GovVehiclePass, check in VehiclePass
-        vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
-        redirect_url = "approved_private"  # Redirect for Private passes
+    # ✅ Fetch Government Vehicle Pass
+    vehicle_pass = get_object_or_404(GovVehiclePass, id=pass_id)
+
+    print(f"🚀 DEBUG: Gov VehiclePass Found - ID: {vehicle_pass.id}, Current Status: {vehicle_pass.status}")
 
     # 🔄 **Admins should always be redirected to `admin_vehicle_passes`**
-    if is_admin:
-        redirect_url = "admin_vehicle_passes"
-
-    print(f"🚀 DEBUG: VehiclePass Found - ID: {vehicle_pass.id}, Current Status: {vehicle_pass.status}")
+    redirect_url = "admin_vehicle_passes" if is_admin else "approved_gov"
 
     # ✅ Handle Rejection with Reason
     if status == "rejected":
@@ -843,7 +836,7 @@ def update_pass_status(request, pass_id, status):
                 messages.error(request, "❌ Please provide a reason for rejection!")
                 return redirect(redirect_url)
 
-            print(f"🛑 REJECTING: {vehicle_pass.id} by Admin {admin_id} with Reason: {reject_reason}")
+            print(f"🛑 REJECTING GOV PASS: {vehicle_pass.id} by Admin {admin_id} with Reason: {reject_reason}")
 
             vehicle_pass.status = "rejected"
             vehicle_pass.reject_reason = reject_reason
@@ -854,9 +847,9 @@ def update_pass_status(request, pass_id, status):
                 vehicle_pass.pass_no = None  # Remove the pass number
             vehicle_pass.save()
 
-            print(f"✅ REJECTED: {vehicle_pass.id}, New Status: {vehicle_pass.status}")
+            print(f"✅ REJECTED GOV PASS: {vehicle_pass.id}, New Status: {vehicle_pass.status}")
 
-            messages.success(request, "❌ Vehicle Pass Rejected Successfully!")
+            messages.success(request, "❌ Government Vehicle Pass Rejected Successfully!")
             return redirect(redirect_url)
 
         messages.error(request, "❌ Invalid request method for rejection!")
@@ -864,7 +857,7 @@ def update_pass_status(request, pass_id, status):
 
     # ✅ Handle Approval
     if status == "approved":
-        print(f"✔️ APPROVING: {vehicle_pass.id} by Admin {admin_id}")
+        print(f"✔️ APPROVING GOV PASS: {vehicle_pass.id} by Admin {admin_id}")
 
         vehicle_pass.status = "approved"
         vehicle_pass.reject_reason = ""
@@ -876,8 +869,70 @@ def update_pass_status(request, pass_id, status):
 
         vehicle_pass.save()
 
-        print(f"✅ APPROVED: {vehicle_pass.id}, New Status: {vehicle_pass.status}")
-        messages.success(request, "✅ Vehicle Pass Approved Successfully!")
+        print(f"✅ APPROVED GOV PASS: {vehicle_pass.id}, New Status: {vehicle_pass.status}")
+        messages.success(request, "✅ Government Vehicle Pass Approved Successfully!")
+
+    return redirect(redirect_url)
+
+# ✅ Function to Update Private Vehicle Pass Status
+def update_private_pass_status(request, pass_id, status):
+    admin_id = request.session.get("user_id")  # Get admin ID from session
+    is_admin = request.session.get("is_admin", False)  # Ensure this exists in the session
+
+    if status not in ["approved", "rejected"]:
+        return HttpResponse("❌ Invalid Status!", status=400)
+
+    # ✅ Fetch Private Vehicle Pass
+    vehicle_pass = get_object_or_404(VehiclePass, id=pass_id)
+
+    print(f"🚀 DEBUG: Private VehiclePass Found - ID: {vehicle_pass.id}, Current Status: {vehicle_pass.status}")
+
+    # 🔄 **Admins should always be redirected to `admin_vehicle_passes`**
+    redirect_url = "admin_vehicle_passes" if is_admin else "approved_private"
+
+    # ✅ Handle Rejection with Reason
+    if status == "rejected":
+        if request.method == "POST":
+            reject_reason = request.POST.get("reject_reason", "").strip()
+            if not reject_reason:
+                messages.error(request, "❌ Please provide a reason for rejection!")
+                return redirect(redirect_url)
+
+            print(f"🛑 REJECTING PRIVATE PASS: {vehicle_pass.id} by Admin {admin_id} with Reason: {reject_reason}")
+
+            vehicle_pass.status = "rejected"
+            vehicle_pass.reject_reason = reject_reason
+            vehicle_pass.approved_by = admin_id
+
+            if vehicle_pass.pass_no:
+                print(f"⚠️ Removing pass_no: {vehicle_pass.pass_no} for rejected pass ID: {vehicle_pass.id}")
+                vehicle_pass.pass_no = None  # Remove the pass number
+            vehicle_pass.save()
+
+            print(f"✅ REJECTED PRIVATE PASS: {vehicle_pass.id}, New Status: {vehicle_pass.status}")
+
+            messages.success(request, "❌ Private Vehicle Pass Rejected Successfully!")
+            return redirect(redirect_url)
+
+        messages.error(request, "❌ Invalid request method for rejection!")
+        return redirect(redirect_url)
+
+    # ✅ Handle Approval
+    if status == "approved":
+        print(f"✔️ APPROVING PRIVATE PASS: {vehicle_pass.id} by Admin {admin_id}")
+
+        vehicle_pass.status = "approved"
+        vehicle_pass.reject_reason = ""
+        vehicle_pass.approved_by = admin_id
+        vehicle_pass.approved_date = now().date()
+
+        if not vehicle_pass.pass_no:
+            vehicle_pass.pass_no = vehicle_pass.generate_pass_no()
+
+        vehicle_pass.save()
+
+        print(f"✅ APPROVED PRIVATE PASS: {vehicle_pass.id}, New Status: {vehicle_pass.status}")
+        messages.success(request, "✅ Private Vehicle Pass Approved Successfully!")
 
     return redirect(redirect_url)
 
