@@ -437,7 +437,7 @@ def generate_gov_pass_pdf(pass_obj, position="top"):
             x += dot_spacing  
 
     # ✅ Pass Title
-    draw.text((700, 280), "સરકારી વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
+    draw.text((850, 280), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
 
     # ✅ Save Image
     formatted_date_start = pass_obj.start_date.strftime("%d-%m-%Y") if pass_obj.start_date else "N/A"
@@ -649,7 +649,7 @@ def generate_gov_pass_pdf1(pass_obj, position="top"):
             x += dot_spacing  
 
     # ✅ Pass Title
-    draw.text((700, 280), "સરકારી વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
+    draw.text((850, 280), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
 
     # ✅ Save Image
     formatted_date_start = pass_obj.start_date.strftime("%d-%m-%Y") if pass_obj.start_date else "N/A"
@@ -1320,7 +1320,7 @@ def generate_gov_pass_image(request, pass_id):
             x += dot_spacing  
 
     # ✅ Pass Title
-    draw.text((700, 280), "સરકારી વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
+    draw.text((850, 280), "વાહન પ્રવેશ પરવાનગી", fill="black", font=font_title)
 
     formatted_date_start = vehicle_pass.start_date.strftime("%d-%m-%Y") if vehicle_pass.start_date else "N/A"
     formatted_date_end = vehicle_pass.end_date.strftime("%d-%m-%Y") if vehicle_pass.end_date else "N/A"
