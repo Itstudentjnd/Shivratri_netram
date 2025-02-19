@@ -125,52 +125,48 @@ def check_pass_status(request):
 def issue_vehicle_pass(request):
     if request.session.get("role") == "user":
         if request.method == "POST":
-            vehicle_number = (
-                request.POST.get("state_code", "").upper()
-                + request.POST.get("city_code", "")
-                + request.POST.get("series", "").upper()
-                + request.POST.get("digits", "")
-            )
+            state_code = request.POST.get("state_code", "").upper()
+            city_code = request.POST.get("city_code", "")
+            series = request.POST.get("series", "").upper()
+            digits = request.POST.get("digits", "")
 
-            if VehiclePass.objects.filter(vehicle_number=vehicle_number).exists():
+            vehicle_number = state_code + city_code + series + digits
+            vehicle_type = request.POST.get("vehicle_type", "").strip()
+
+            # ✅ Allow insert if vehicle_number is blank
+            if vehicle_number and vehicle_type != "E-Vehicle" and VehiclePass.objects.filter(vehicle_number=vehicle_number).exists():
                 messages.error(request, f"🚨 આ વાહન નંબર ({vehicle_number}) માટે પહેલેથી જ અરજી થઈ ચૂકી છે!")
                 return redirect("issue_vehicle_pass")
 
             form = VehiclePassForm(request.POST, request.FILES)
             if form.is_valid():
                 vehicle_pass = form.save(commit=False)
-                vehicle_pass.vehicle_number = vehicle_number
+                vehicle_pass.vehicle_number = vehicle_number if vehicle_number else None  # ✅ Allow blank vehicle_number
+                vehicle_pass.vehicle_type = vehicle_type
                 vehicle_pass.mobile_no = request.POST.get("mobile_no", "")
 
+                # ✅ Store uploaded files
                 vehicle_pass.aadhaar_front = request.FILES.get("aadhaar_front")
                 vehicle_pass.aadhaar_back = request.FILES.get("aadhaar_back")
                 vehicle_pass.rc_book = request.FILES.get("rc_book")
                 vehicle_pass.license_photo = request.FILES.get("license_photo")
 
-                travel_reason = request.POST.get("travel_reason", "").strip()
-                extra_name = request.POST.get("extra_name", "").strip()
-                extra_place = request.POST.get("extra_place", "").strip()
-                other_reason = request.POST.get("other_reason", "").strip()
+                # ✅ Store travel reason
+                vehicle_pass.travel_reason = request.POST.get("travel_reason", "").strip()
+                vehicle_pass.other_reason = request.POST.get("other_reason", "").strip()
+                vehicle_pass.extra_name = request.POST.get("extra_name", "").strip()
+                vehicle_pass.extra_place = request.POST.get("extra_place", "").strip()
 
-                if travel_reason == "અન્ય":
-                    if not other_reason:
-                        messages.error(request, "❌ જો તમે 'અન્ય' પસંદ કરો છે, તો કૃપા કરીને કારણ દાખલ કરો!")
-                        return redirect("issue_vehicle_pass")
-                    vehicle_pass.travel_reason = "અન્ય"
-                    vehicle_pass.other_reason = other_reason  # ✅ Store "Other" reason
-                    vehicle_pass.extra_name = ""
-                    vehicle_pass.extra_place = ""
-                else:
-                    vehicle_pass.travel_reason = travel_reason
-                    vehicle_pass.other_reason = ""  # ✅ Clear other_reason if not used
-                    vehicle_pass.extra_name = extra_name
-                    vehicle_pass.extra_place = extra_place
+                if vehicle_pass.travel_reason == "અન્ય" and not vehicle_pass.other_reason:
+                    messages.error(request, "❌ જો તમે 'અન્ય' પસંદ કરો છે, તો કૃપા કરીને કારણ દાખલ કરો!")
+                    return redirect("issue_vehicle_pass")
 
+                # ✅ Save record
                 vehicle_pass.status = "pending"
                 vehicle_pass.applied_at = timezone.now()
                 vehicle_pass.save()
 
-                messages.success(request, f"✅ વાહન પાસ પર સફળતાપૂર્વક સબમિટ થય ગયેલ છે!")
+                messages.success(request, f"✅ વાહન પાસ પર સફળતાપૂર્વક સબમિટ થઈ ગયું છે!")
                 return redirect("issue_vehicle_pass")
 
             else:
@@ -182,7 +178,6 @@ def issue_vehicle_pass(request):
 
         return render(request, "issue_vehicle_pass.html", {"form": form})
     return redirect(login_view)
-
 
 
 def issue_gov_vehicle_pass(request):
